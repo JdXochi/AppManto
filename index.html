@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingresar — Control de Mantenimiento Xochi</title>
+<style>
+  :root{
+    --navy:#1F3864; --navy-dark:#152A4D; --ink:#1C2430; --paper:#F6F7F9;
+    --card:#FFFFFF; --line:#E1E5EA; --muted:#6B7280; --red-bg:#FCE8E8; --red-txt:#B42318;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:36px 32px; width:100%; max-width:380px; box-shadow:0 2px 12px rgba(0,0,0,.04);
+  }
+  .brand{ text-align:center; margin-bottom:26px; }
+  .brand .badge{
+    width:52px; height:52px; border-radius:12px; background:var(--navy); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:20px;
+    margin:0 auto 14px;
+  }
+  .brand h1{ font-size:16px; margin:0 0 2px; color:var(--navy); }
+  .brand p{ font-size:12.5px; color:var(--muted); margin:0; }
+
+  label{ display:block; font-size:12.5px; font-weight:600; color:#3D4451; margin-bottom:5px; }
+  input{
+    width:100%; padding:10px 12px; border:1px solid #CBD2DA; border-radius:6px;
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink); margin-bottom:16px;
+  }
+  input:focus{ outline:2px solid #6FA8DC; outline-offset:0; border-color:#6FA8DC; }
+
+  button{
+    width:100%; background:var(--navy); color:#fff; border:none; padding:11px;
+    border-radius:6px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  button:hover{ background:var(--navy-dark); }
+  button:disabled{ background:#9AA7B8; cursor:not-allowed; }
+
+  .error{
+    background:var(--red-bg); color:var(--red-txt); font-size:13px; padding:10px 12px;
+    border-radius:6px; margin-bottom:16px; display:none;
+  }
+  footer{ text-align:center; font-size:11.5px; color:var(--muted); margin-top:18px; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="brand">
+    <div class="badge">X</div>
+    <h1>Control de Mantenimiento de Equipos</h1>
+    <p>Xochi · Corredor de las Flores</p>
+  </div>
+
+  <div class="error" id="error-msg"></div>
+
+  <form id="login-form">
+    <label for="usuario">Usuario</label>
+    <input type="text" id="usuario" autocomplete="username" placeholder="ej. jdiaz" required>
+
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" autocomplete="current-password" required>
+
+    <button type="submit" id="btn-login">Ingresar</button>
+  </form>
+
+  <footer>Acceso restringido — cuentas creadas por el Administrador.</footer>
+</div>
+
+<script type="module">
+  import { supabase } from "./js/supabaseClient.js";
+  import { AUTH_DOMAIN } from "./js/config.js";
+
+  // Si ya hay una sesión activa, no mostramos el login otra vez.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) window.location.href = "dashboard.html";
+
+  const form = document.getElementById("login-form");
+  const errorMsg = document.getElementById("error-msg");
+  const btn = document.getElementById("btn-login");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMsg.style.display = "none";
+
+    const usuario = document.getElementById("usuario").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+
+    if (!usuario || !password) return;
+
+    btn.disabled = true;
+    btn.textContent = "Ingresando...";
+
+    const email = `${usuario}@${AUTH_DOMAIN}`;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      errorMsg.textContent = "Usuario o contraseña incorrectos.";
+      errorMsg.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Ingresar";
+      return;
+    }
+
+    window.location.href = "dashboard.html";
+  });
+</script>
+
+</body>
+</html>
