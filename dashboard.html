@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Mantenimiento — Xochi</title>
+<style>
+  :root{
+    --navy:#1F3864; --navy-dark:#152A4D; --ink:#1C2430; --paper:#F6F7F9; --card:#FFFFFF;
+    --line:#E1E5EA; --muted:#6B7280;
+    --green-bg:#E6F4EA; --green-txt:#1E7B34;
+    --yellow-bg:#FFF6DD; --yellow-txt:#8A6300;
+    --red-bg:#FCE8E8; --red-txt:#B42318;
+    --grey-bg:#EEF0F2; --grey-txt:#6B7280;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  header{ background:var(--navy); color:#fff; padding:18px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  header h1{ font-size:17px; margin:0; }
+  header .who{ font-size:13px; color:#C9D6EA; }
+  .role-pill{ display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(255,255,255,.15); margin-left:8px; }
+  button.logout{ background:none; border:1px solid #6FA8DC; color:#fff; padding:7px 14px; border-radius:6px; font-size:12.5px; cursor:pointer; }
+  button.logout:hover{ background:rgba(255,255,255,.1); }
+  nav{ display:flex; gap:4px; background:var(--navy-dark); padding:0 24px; overflow-x:auto; }
+  nav button{ background:none; border:none; color:#C9D6EA; padding:12px 14px; font-size:13px; cursor:pointer;
+    border-bottom:3px solid transparent; font-weight:600; white-space:nowrap; }
+  nav button.active{ color:#fff; border-bottom-color:#6FA8DC; }
+  main{ max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:8px; padding:20px; margin-bottom:18px; }
+  .card h2{ font-size:15px; margin:0 0 4px; color:var(--navy); }
+  .card .sub{ font-size:12.5px; color:var(--muted); margin:0 0 14px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .grid2, .grid3{ grid-template-columns:1fr; } }
+  label{ display:block; font-size:12.5px; font-weight:600; color:#3D4451; margin-bottom:5px; }
+  select, input[type=date], input[type=text], input[type=number], textarea{
+    width:100%; padding:9px 10px; border:1px solid #CBD2DA; border-radius:6px;
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink); }
+  input:disabled{ background:#F3F4F6; color:#6B7280; }
+  textarea{ resize:vertical; min-height:60px; }
+  select:focus, input:focus, textarea:focus{ outline:2px solid #6FA8DC; outline-offset:0; border-color:#6FA8DC; }
+  .field{ margin-bottom:14px; }
+  .btnrow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:6px; }
+  button.primary{ background:var(--navy); color:#fff; border:none; padding:10px 20px; border-radius:6px;
+    font-size:14px; font-weight:600; cursor:pointer; }
+  button.primary:hover{ background:var(--navy-dark); }
+  button.primary:disabled{ background:#9AA7B8; cursor:not-allowed; }
+  button.secondary{ background:#fff; color:var(--navy); border:1px solid var(--navy); padding:9px 18px;
+    border-radius:6px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  button.ghost{ background:none; border:none; color:#B42318; font-size:12.5px; cursor:pointer; font-weight:600; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .badge{ display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; }
+  .badge.Vigente{ background:var(--green-bg); color:var(--green-txt); }
+  .badge.Próximo{ background:var(--yellow-bg); color:var(--yellow-txt); }
+  .badge.Atrasado{ background:var(--red-bg); color:var(--red-txt); }
+  .badge.Sin.registro{ background:var(--grey-bg); color:var(--grey-txt); }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th, td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ background:#F3F5F7; color:#3D4451; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; }
+  tr:hover td{ background:#FAFBFC; }
+  .empty{ color:var(--muted); font-size:13.5px; padding:20px 4px; text-align:center; }
+  .summary{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .summary .stat{ flex:1; min-width:130px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .summary .stat .n{ font-size:24px; font-weight:700; color:var(--navy); }
+  .summary .stat .l{ font-size:12px; color:var(--muted); margin-top:2px; }
+  .filters{ display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .filters select{ width:auto; min-width:140px; }
+  .radio-group{ display:flex; gap:18px; margin-top:4px; }
+  .radio-group label{ font-weight:500; display:flex; align-items:center; gap:6px; margin-bottom:0; }
+  .radio-group input{ width:auto; }
+  .sigwrap{ border:1px solid #CBD2DA; border-radius:6px; background:#fcfcfd; }
+  canvas#sigpad{ display:block; width:100%; height:150px; touch-action:none; cursor:crosshair; }
+  .sigbar{ display:flex; justify-content:space-between; align-items:center; padding:6px 10px; border-top:1px solid var(--line); }
+  footer{ text-align:center; font-size:12px; color:var(--muted); padding:20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Control de Mantenimiento de Equipos <span class="role-pill" id="role-pill">…</span></h1>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <span class="who" id="who">Cargando...</span>
+    <button class="logout" id="btn-logout">Cerrar sesión</button>
+  </div>
+</header>
+
+<nav id="nav">
+  <button class="tab" data-view="registrar" data-roles="admin,tecnico">Registrar</button>
+  <button class="tab" data-view="inventario" data-roles="admin,tecnico,usuario">Inventario</button>
+  <button class="tab" data-view="estado" data-roles="admin,tecnico">Estado de equipos</button>
+  <button class="tab" data-view="historial" data-roles="admin,tecnico">Historial</button>
+  <button class="tab" data-view="reportes" data-roles="admin,tecnico,usuario">Reportes</button>
+</nav>
+
+<main>
+
+  <!-- ===== REGISTRAR ===== -->
+  <section id="registrar" class="view">
+    <div class="card">
+      <h2>Nuevo mantenimiento realizado</h2>
+      <p class="sub">Si el equipo no aparece en la lista, pide al Administrador que lo agregue en Inventario.</p>
+
+      <div class="grid3">
+        <div class="field">
+          <label for="f-garita">Garita</label>
+          <select id="f-garita"><option value="">Todas</option></select>
+        </div>
+        <div class="field">
+          <label for="f-tipo">Tipo de equipo</label>
+          <select id="f-tipo"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
+          <label for="f-serie">Equipo (serie / código)</label>
+          <select id="f-serie"></select>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="field">
+          <label for="f-fecha">Fecha de ejecución</label>
+          <input type="date" id="f-fecha">
+        </div>
+        <div class="field">
+          <label for="f-frecuencia">Frecuencia de este equipo</label>
+          <input type="text" id="f-frecuencia" disabled>
+        </div>
+        <div class="field">
+          <label for="f-tecnico">Técnico que realizó el mantenimiento</label>
+          <input type="text" id="f-tecnico" disabled>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-actividades">Actividades realizadas (qué se le hizo)</label>
+        <textarea id="f-actividades" placeholder="Ej. Limpieza de lentes, ajuste de enfoque, verificación de PoE"></textarea>
+      </div>
+      <div class="field">
+        <label for="f-hallazgos">Hallazgos / Observaciones</label>
+        <textarea id="f-hallazgos" placeholder="Ej. Sin novedad / Se detectó..."></textarea>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
+      <h2 style="margin-bottom:2px">Visto bueno</h2>
+      <p class="sub">Quien confirma que el trabajo se realizó correctamente.</p>
+
+      <div class="grid2">
+        <div class="field">
+          <label for="f-vobo-nombre">Nombre de quien da el Vo.Bo.</label>
+          <input type="text" id="f-vobo-nombre" placeholder="Se autocompleta con el encargado del equipo">
+        </div>
+        <div class="field">
+          <label for="f-vobo-puesto">Puesto</label>
+          <input type="text" id="f-vobo-puesto" placeholder="Puesto">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Tipo de firma</label>
+        <div class="radio-group">
+          <label><input type="radio" name="tipofirma" value="Digital" checked> Firma digital (en pantalla)</label>
+          <label><input type="radio" name="tipofirma" value="Física"> Firma física (en papel)</label>
+        </div>
+      </div>
+
+      <div class="field" id="wrap-firma-digital">
+        <label>Firma</label>
+        <div class="sigwrap">
+          <canvas id="sigpad"></canvas>
+          <div class="sigbar">
+            <span class="hint">Dibuja la firma con el mouse o el dedo</span>
+            <button type="button" class="secondary" id="btn-limpiar-firma">Limpiar</button>
+          </div>
+        </div>
+      </div>
+      <div class="field hint" id="wrap-firma-fisica" style="display:none">
+        La firma se recabará en papel. Al generar el PDF se dejará una línea en blanco para firmar.
+      </div>
+
+      <div class="btnrow">
+        <button class="primary" id="btn-guardar">Guardar y generar PDF</button>
+        <span class="hint" id="save-msg"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== INVENTARIO ===== -->
+  <section id="inventario" class="view">
+    <div class="card" id="card-agregar-equipo" style="display:none">
+      <h2>Agregar equipo al inventario</h2>
+      <p class="sub">Una fila por cada unidad física, identificada por su serie o código.</p>
+      <div class="grid3">
+        <div class="field">
+          <label for="i-garita">Garita</label>
+          <select id="i-garita"></select>
+        </div>
+        <div class="field">
+          <label for="i-tipo">Tipo de equipo</label>
+          <select id="i-tipo"></select>
+        </div>
+        <div class="field">
+          <label for="i-serie">Serie / Código de inventario</label>
+          <input type="text" id="i-serie" placeholder="Ej. LAP-G1-002">
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="field">
+          <label for="i-encargado">Nombre del encargado</label>
+          <input type="text" id="i-encargado" placeholder="Nombre y apellido">
+        </div>
+        <div class="field">
+          <label for="i-puesto">Puesto del encargado</label>
+          <input type="text" id="i-puesto" placeholder="Puesto">
+        </div>
+        <div class="field">
+          <label for="i-frecuencia">Frecuencia (meses)</label>
+          <input type="number" id="i-frecuencia" min="1" max="24">
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="primary" id="btn-agregar-inv">Agregar equipo</button>
+        <span class="hint" id="inv-msg"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Equipos registrados <span class="hint" id="inv-count"></span></h2>
+      <div class="filters">
+        <select id="filter-garita-inv"><option value="">Todas las garitas</option></select>
+        <select id="filter-tipo-inv"><option value="">Todos los tipos</option></select>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="tabla-inventario">
+          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie / Código</th><th>Encargado</th><th>Puesto</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty" id="inv-empty" style="display:none">Aún no hay equipos en el inventario.</p>
+    </div>
+  </section>
+
+  <!-- ===== ESTADO ===== -->
+  <section id="estado" class="view">
+    <div class="summary" id="summary-stats"></div>
+    <div class="card">
+      <h2>Estado por equipo</h2>
+      <div class="filters">
+        <select id="filter-garita-estado"><option value="">Todas las garitas</option></select>
+        <select id="filter-status-estado">
+          <option value="">Todos los estados</option>
+          <option value="Vigente">Vigente</option>
+          <option value="Próximo">Próximo</option>
+          <option value="Atrasado">Atrasado</option>
+          <option value="Sin registro">Sin registro</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="tabla-estado">
+          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie</th><th>Encargado</th><th>Última fecha</th><th>Próxima fecha</th><th>Estado</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== HISTORIAL ===== -->
+  <section id="historial" class="view">
+    <div class="card">
+      <h2>Historial de mantenimientos</h2>
+      <div class="filters">
+        <select id="filter-garita-hist"><option value="">Todas las garitas</option></select>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="tabla-historial">
+          <thead><tr><th>Fecha</th><th>Serie</th><th>Garita / Tipo</th><th>Técnico</th><th>Vo.Bo.</th><th>Firma</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty" id="hist-empty" style="display:none">Aún no hay mantenimientos registrados.</p>
+    </div>
+  </section>
+
+  <!-- ===== REPORTES ===== -->
+  <section id="reportes" class="view">
+    <div class="summary" id="reportes-stats"></div>
+    <div class="card">
+      <h2>Equipos por garita</h2>
+      <div style="overflow-x:auto">
+        <table id="tabla-reportes-garita">
+          <thead><tr><th>Garita</th><th>Cantidad de equipos</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Equipos por tipo</h2>
+      <div style="overflow-x:auto">
+        <table id="tabla-reportes-tipo">
+          <thead><tr><th>Tipo de equipo</th><th>Cantidad</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Xochi · Corredor de las Flores — Departamento de IT</footer>
+
+<script type="module">
+import { supabase, requireSession, getPerfilActual, cerrarSesion } from "./js/supabaseClient.js";
+import { listEquipos, addEquipo, listSeguimiento, listMantenimientos, addMantenimiento,
+         deleteMantenimiento, addVistoBueno, subirFirma, urlFirma } from "./js/data.js";
+import { generarPDFConstancia, fmtDate, addMonths } from "./js/pdf.js";
+
+const TIPOS_FRECUENCIA = {
+  "Impresoras": 3, "Laptops": 3, "NVR's": 3, "Cuarto de F.O.": 2,
+  "Cámaras": 3, "Controles de Acceso": 3, "Servidor de Video": 6, "DataCenter": 6,
+};
+const GARITAS = ["G1", "G2", "G3", "G4", "Central"];
+
+// ---------------- Auth / perfil ----------------
+const session = await requireSession();
+let perfil = null;
+if (session) perfil = await getPerfilActual();
+
+if (!perfil) {
+  document.getElementById("who").textContent = "Perfil no encontrado — contacta al Administrador.";
+} else {
+  document.getElementById("who").textContent = `${perfil.nombre} (@${perfil.username || "—"})`;
+  document.getElementById("role-pill").textContent = perfil.rol;
+}
+document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+
+const ROL = perfil ? perfil.rol : "usuario";
+
+// Muestra solo las pestañas permitidas para este rol
+document.querySelectorAll("#nav .tab").forEach(btn => {
+  const roles = btn.dataset.roles.split(",");
+  if (roles.includes(ROL)) {
+    btn.style.display = "";
+  } else {
+    btn.style.display = "none";
+  }
+});
+if (ROL === "admin") document.getElementById("card-agregar-equipo").style.display = "block";
+
+// Activa la primera pestaña visible
+const primeraVisible = [...document.querySelectorAll("#nav .tab")].find(b => b.style.display !== "none");
+if (primeraVisible) {
+  primeraVisible.classList.add("active");
+  document.getElementById(primeraVisible.dataset.view).classList.add("active");
+}
+
+document.querySelectorAll("#nav .tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#nav .tab").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.view).classList.add("active");
+    cargarVistaSiHaceFalta(btn.dataset.view);
+  });
+});
+
+function fillSelect(el, values, placeholder) {
+  el.innerHTML = "";
+  if (placeholder) { const o = document.createElement("option"); o.value = ""; o.textContent = placeholder; el.appendChild(o); }
+  values.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v; el.appendChild(o); });
+}
+function badgeClass(estado) { return estado.replace(" ", "."); }
+
+// ---------------- Estado en memoria (cache simple) ----------------
+let equiposCache = [];
+let cargado = { registrar: false, inventario: false, estado: false, historial: false, reportes: false };
+
+async function cargarVistaSiHaceFalta(view) {
+  try {
+    if (view === "registrar" && !cargado.registrar) { await initRegistrar(); cargado.registrar = true; }
+    if (view === "inventario" && !cargado.inventario) { await initInventario(); cargado.inventario = true; }
+    if (view === "estado" && !cargado.estado) { await initEstado(); cargado.estado = true; }
+    if (view === "historial" && !cargado.historial) { await initHistorial(); cargado.historial = true; }
+    if (view === "reportes" && !cargado.reportes) { await initReportes(); cargado.reportes = true; }
+  } catch (err) {
+    console.error(err);
+    alert("Ocurrió un error cargando esta sección: " + err.message);
+  }
+}
+if (primeraVisible) cargarVistaSiHaceFalta(primeraVisible.dataset.view);
+
+async function getEquipos() {
+  if (!equiposCache.length) equiposCache = await listEquipos();
+  return equiposCache;
+}
+
+// ================= REGISTRAR =================
+const fGarita = document.getElementById("f-garita");
+const fTipo = document.getElementById("f-tipo");
+const fSerie = document.getElementById("f-serie");
+const fFrecuencia = document.getElementById("f-frecuencia");
+const fVoboNombre = document.getElementById("f-vobo-nombre");
+const fVoboPuesto = document.getElementById("f-vobo-puesto");
+let canvas, ctx, drawing = false, hasSignature = false;
+
+async function initRegistrar() {
+  document.getElementById("f-tecnico").value = perfil ? perfil.nombre : "";
+  document.getElementById("f-fecha").valueAsDate = new Date();
+
+  fillSelect(fGarita, GARITAS, "Todas");
+  fillSelect(fTipo, Object.keys(TIPOS_FRECUENCIA), "Todos");
+  await getEquipos();
+  refreshSerieOptions();
+
+  fGarita.addEventListener("change", refreshSerieOptions);
+  fTipo.addEventListener("change", refreshSerieOptions);
+  fSerie.addEventListener("change", onSerieChange);
+
+  const radiosFirma = document.querySelectorAll('input[name="tipofirma"]');
+  const wrapDigital = document.getElementById("wrap-firma-digital");
+  const wrapFisica = document.getElementById("wrap-firma-fisica");
+  radiosFirma.forEach(r => r.addEventListener("change", () => {
+    const digital = document.querySelector('input[name="tipofirma"]:checked').value === "Digital";
+    wrapDigital.style.display = digital ? "block" : "none";
+    wrapFisica.style.display = digital ? "none" : "block";
+  }));
+
+  canvas = document.getElementById("sigpad");
+  ctx = canvas.getContext("2d");
+  function resizeCanvas() {
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * ratio;
+    canvas.height = 150 * ratio;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#1C2430";
+  }
+  window.addEventListener("resize", resizeCanvas);
+  setTimeout(resizeCanvas, 50);
+
+  function pos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: cx, y: cy };
+  }
+  canvas.addEventListener("pointerdown", e => { drawing = true; hasSignature = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); });
+  canvas.addEventListener("pointermove", e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); });
+  window.addEventListener("pointerup", () => { drawing = false; });
+  document.getElementById("btn-limpiar-firma").addEventListener("click", () => {
+    try { ctx.clearRect(0, 0, canvas.width, canvas.height); } catch (e) {}
+    hasSignature = false;
+  });
+
+  document.getElementById("btn-guardar").addEventListener("click", guardarRegistro);
+}
+
+function refreshSerieOptions() {
+  const g = fGarita.value, t = fTipo.value;
+  const opciones = equiposCache.filter(e => (!g || e.garita === g) && (!t || e.tipo === t));
+  fSerie.innerHTML = "";
+  if (!opciones.length) {
+    const o = document.createElement("option"); o.value = ""; o.textContent = "— No hay equipos con ese filtro —";
+    fSerie.appendChild(o);
+  } else {
+    opciones.forEach(e => {
+      const o = document.createElement("option");
+      o.value = e.id;
+      o.textContent = `${e.serie} — ${e.tipo} (${e.garita})`;
+      fSerie.appendChild(o);
+    });
+  }
+  onSerieChange();
+}
+function equipoSeleccionado() {
+  return equiposCache.find(e => e.id === fSerie.value);
+}
+function onSerieChange() {
+  const eq = equipoSeleccionado();
+  fFrecuencia.value = eq ? `Cada ${eq.frecuencia_meses} meses` : "";
+  fVoboNombre.value = eq ? (eq.encargado_nombre || "") : "";
+  fVoboPuesto.value = eq ? (eq.encargado_puesto || "") : "";
+}
+
+async function guardarRegistro() {
+  const msg = document.getElementById("save-msg");
+  const eq = equipoSeleccionado();
+  const fecha = document.getElementById("f-fecha").value;
+  const tipoFirma = document.querySelector('input[name="tipofirma"]:checked').value;
+  const voboNombre = fVoboNombre.value.trim();
+  const voboPuesto = fVoboPuesto.value.trim();
+  const actividades = document.getElementById("f-actividades").value.trim();
+  const hallazgos = document.getElementById("f-hallazgos").value.trim();
+
+  if (!eq) { msg.style.color = "#B42318"; msg.textContent = "Selecciona un equipo del inventario."; return; }
+  if (!fecha) { msg.style.color = "#B42318"; msg.textContent = "Selecciona la fecha."; return; }
+  if (!voboNombre) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el nombre de quien da el Vo.Bo."; return; }
+  if (tipoFirma === "Digital" && !hasSignature) {
+    msg.style.color = "#B42318"; msg.textContent = "Falta capturar la firma digital (o cambia a firma física)."; return;
+  }
+
+  const btn = document.getElementById("btn-guardar");
+  btn.disabled = true; btn.textContent = "Guardando...";
+
+  try {
+    const mant = await addMantenimiento({
+      equipo_id: eq.id,
+      fecha,
+      tecnico_id: session.user.id,
+      tecnico_nombre: perfil.nombre,
+      actividades,
+      hallazgos,
+    });
+
+    let firmaPath = null;
+    let firmaDataUrl = null;
+    if (tipoFirma === "Digital") {
+      firmaDataUrl = canvas.toDataURL("image/png");
+      firmaPath = await subirFirma(mant.id, firmaDataUrl);
+    }
+
+    await addVistoBueno({
+      mantenimiento_id: mant.id,
+      nombre: voboNombre,
+      puesto: voboPuesto,
+      tipo_firma: tipoFirma,
+      firma_path: firmaPath,
+    });
+
+    generarPDFConstancia(eq, { fecha, tecnico_nombre: perfil.nombre, actividades, hallazgos },
+      { nombre: voboNombre, puesto: voboPuesto, tipo_firma: tipoFirma, firmaDataUrl });
+
+    document.getElementById("f-actividades").value = "";
+    document.getElementById("f-hallazgos").value = "";
+    try { ctx.clearRect(0, 0, canvas.width, canvas.height); } catch (e) {}
+    hasSignature = false;
+
+    msg.style.color = "#1E7B34"; msg.textContent = "Registro guardado y PDF generado.";
+    setTimeout(() => msg.textContent = "", 3000);
+
+    cargado.estado = false; cargado.historial = false; cargado.reportes = false;
+  } catch (err) {
+    console.error(err);
+    msg.style.color = "#B42318"; msg.textContent = "Error al guardar: " + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Guardar y generar PDF";
+  }
+}
+
+// ================= INVENTARIO =================
+async function initInventario() {
+  if (ROL === "admin") {
+    const iGarita = document.getElementById("i-garita");
+    const iTipo = document.getElementById("i-tipo");
+    fillSelect(iGarita, GARITAS, null);
+    fillSelect(iTipo, Object.keys(TIPOS_FRECUENCIA), null);
+    iTipo.addEventListener("change", () => {
+      document.getElementById("i-frecuencia").value = TIPOS_FRECUENCIA[iTipo.value] || "";
+    });
+    document.getElementById("i-frecuencia").value = TIPOS_FRECUENCIA[iTipo.value] || "";
+
+    document.getElementById("btn-agregar-inv").addEventListener("click", async () => {
+      const msg = document.getElementById("inv-msg");
+      const garita = iGarita.value, tipo = iTipo.value;
+      const serie = document.getElementById("i-serie").value.trim();
+      const encargado_nombre = document.getElementById("i-encargado").value.trim();
+      const encargado_puesto = document.getElementById("i-puesto").value.trim();
+      const frecuencia_meses = Number(document.getElementById("i-frecuencia").value) || TIPOS_FRECUENCIA[tipo];
+
+      if (!serie) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la serie/código del equipo."; return; }
+
+      try {
+        await addEquipo({ garita, tipo, serie, encargado_nombre, encargado_puesto, frecuencia_meses });
+        document.getElementById("i-serie").value = "";
+        document.getElementById("i-encargado").value = "";
+        document.getElementById("i-puesto").value = "";
+        msg.style.color = "#1E7B34"; msg.textContent = "Equipo agregado.";
+        setTimeout(() => msg.textContent = "", 2000);
+        equiposCache = [];
+        await renderInventario();
+      } catch (err) {
+        msg.style.color = "#B42318";
+        msg.textContent = err.message.includes("duplicate") ? "Ya existe un equipo con esa serie." : ("Error: " + err.message);
+      }
+    });
+  }
+
+  fillSelect(document.getElementById("filter-garita-inv"), GARITAS, "Todas las garitas");
+  fillSelect(document.getElementById("filter-tipo-inv"), Object.keys(TIPOS_FRECUENCIA), "Todos los tipos");
+  document.getElementById("filter-garita-inv").addEventListener("change", renderInventario);
+  document.getElementById("filter-tipo-inv").addEventListener("change", renderInventario);
+
+  await renderInventario();
+}
+
+async function renderInventario() {
+  const equipos = await getEquipos();
+  const fg = document.getElementById("filter-garita-inv").value;
+  const ft = document.getElementById("filter-tipo-inv").value;
+  const filtrados = equipos.filter(e => (!fg || e.garita === fg) && (!ft || e.tipo === ft));
+
+  document.getElementById("inv-count").textContent = `(${equipos.length} en total)`;
+  document.getElementById("inv-empty").style.display = filtrados.length ? "none" : "block";
+
+  const tbody = document.querySelector("#tabla-inventario tbody");
+  tbody.innerHTML = "";
+  filtrados.forEach(e => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${e.garita}</td><td>${e.tipo}</td><td><b>${e.serie}</b></td><td>${e.encargado_nombre||""}</td><td>${e.encargado_puesto||""}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ================= ESTADO =================
+async function initEstado() {
+  fillSelect(document.getElementById("filter-garita-estado"), GARITAS, "Todas las garitas");
+  document.getElementById("filter-garita-estado").addEventListener("change", renderEstado);
+  document.getElementById("filter-status-estado").addEventListener("change", renderEstado);
+  await renderEstado();
+}
+async function renderEstado() {
+  const seguimiento = await listSeguimiento();
+  const fg = document.getElementById("filter-garita-estado").value;
+  const fs = document.getElementById("filter-status-estado").value;
+  const counts = { "Vigente": 0, "Próximo": 0, "Atrasado": 0, "Sin registro": 0 };
+  seguimiento.forEach(s => counts[s.estado] = (counts[s.estado] || 0) + 1);
+
+  document.getElementById("summary-stats").innerHTML = `
+    <div class="stat"><div class="n">${counts["Vigente"]||0}</div><div class="l">Vigentes</div></div>
+    <div class="stat"><div class="n">${counts["Próximo"]||0}</div><div class="l">Próximos (≤15 días)</div></div>
+    <div class="stat"><div class="n">${counts["Atrasado"]||0}</div><div class="l">Atrasados</div></div>
+    <div class="stat"><div class="n">${counts["Sin registro"]||0}</div><div class="l">Sin registro</div></div>`;
+
+  const tbody = document.querySelector("#tabla-estado tbody");
+  tbody.innerHTML = "";
+  seguimiento
+    .filter(s => (!fg || s.garita === fg) && (!fs || s.estado === fs))
+    .forEach(s => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${s.garita}</td><td>${s.tipo}</td><td><b>${s.serie}</b></td><td>${s.encargado_nombre||""}</td>
+        <td>${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td>${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
+        <td><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>`;
+      tbody.appendChild(tr);
+    });
+}
+
+// ================= HISTORIAL =================
+async function initHistorial() {
+  fillSelect(document.getElementById("filter-garita-hist"), GARITAS, "Todas las garitas");
+  document.getElementById("filter-garita-hist").addEventListener("change", renderHistorial);
+  await renderHistorial();
+}
+async function renderHistorial() {
+  const registros = await listMantenimientos();
+  const fg = document.getElementById("filter-garita-hist").value;
+
+  const tbody = document.querySelector("#tabla-historial tbody");
+  tbody.innerHTML = "";
+  const filtrados = registros.filter(r => !fg || (r.equipos && r.equipos.garita === fg));
+  document.getElementById("hist-empty").style.display = filtrados.length ? "none" : "block";
+
+  filtrados.forEach(r => {
+    const eq = r.equipos || {};
+    const vobo = (r.vistos_buenos && r.vistos_buenos[0]) || {};
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${fmtDate(r.fecha)}</td>
+      <td><b>${eq.serie||""}</b></td>
+      <td>${eq.garita||""} / ${eq.tipo||""}</td>
+      <td>${r.tecnico_nombre||""}</td>
+      <td>${vobo.nombre||""}${vobo.puesto ? " · "+vobo.puesto : ""}</td>
+      <td>${vobo.tipo_firma||""}</td>
+      <td>${ROL === "admin" ? `<button class="ghost" data-id="${r.id}">Eliminar</button>` : ""}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll("[data-id]").forEach(btn => btn.addEventListener("click", async () => {
+    if (!confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")) return;
+    try {
+      await deleteMantenimiento(btn.dataset.id);
+      await renderHistorial();
+      cargado.estado = false; cargado.reportes = false;
+    } catch (err) { alert("No se pudo eliminar: " + err.message); }
+  }));
+}
+
+// ================= REPORTES =================
+async function initReportes() {
+  const equipos = await getEquipos();
+
+  document.getElementById("reportes-stats").innerHTML = `
+    <div class="stat"><div class="n">${equipos.length}</div><div class="l">Equipos monitoreados</div></div>
+    <div class="stat"><div class="n">${new Set(equipos.map(e=>e.garita)).size}</div><div class="l">Garitas / sitios</div></div>
+    <div class="stat"><div class="n">${new Set(equipos.map(e=>e.tipo)).size}</div><div class="l">Tipos de equipo</div></div>`;
+
+  const porGarita = {};
+  const porTipo = {};
+  equipos.forEach(e => {
+    porGarita[e.garita] = (porGarita[e.garita]||0) + 1;
+    porTipo[e.tipo] = (porTipo[e.tipo]||0) + 1;
+  });
+
+  const tbG = document.querySelector("#tabla-reportes-garita tbody");
+  tbG.innerHTML = "";
+  Object.entries(porGarita).forEach(([g, n]) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${g}</td><td>${n}</td>`;
+    tbG.appendChild(tr);
+  });
+
+  const tbT = document.querySelector("#tabla-reportes-tipo tbody");
+  tbT.innerHTML = "";
+  Object.entries(porTipo).forEach(([t, n]) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${t}</td><td>${n}</td>`;
+    tbT.appendChild(tr);
+  });
+}
+</script>
+</body>
+</html>
