@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ingresar — Control de Mantenimiento Xochi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#14406D; --navy-dark:#0F3357; --brand-blue:#1F97D4;
+    --g1:#0B8F47; --g2:#DA1769; --g3:#2A80C1; --g4:#F06E21;
+    --ink:#14202E; --muted:#66707C; --line:#E4E9EE;
+    --red-bg:#FCE8E8; --red-txt:#B42318;
+  }
+  *{box-sizing:border-box;}
+  html,body{ height:100%; }
+  body{
+    margin:0; color:var(--ink); font-family:"Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--navy);
+    background-image:
+      repeating-linear-gradient(-35deg, rgba(255,255,255,.05) 0 2px, transparent 2px 34px);
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    position:relative; overflow:hidden;
+  }
+  /* Franja de color inspirada en las 4 garitas, apoyada en la esquina inferior */
+  body::before{
+    content:""; position:fixed; left:0; right:0; bottom:0; height:10px;
+    background: linear-gradient(90deg, var(--g1) 0 25%, var(--g2) 25% 50%, var(--g3) 50% 75%, var(--g4) 75% 100%);
+  }
+
+  .card{
+    background:#fff; border-radius:16px; width:100%; max-width:380px;
+    padding:38px 34px 30px; box-shadow: 0 24px 60px rgba(4,20,40,.35);
+    position:relative; z-index:1;
+  }
+  .logo-wrap{ display:flex; justify-content:center; margin-bottom:6px; }
+  .logo-wrap img{ height:46px; width:auto; }
+
+  .lanes{ display:flex; gap:4px; height:5px; border-radius:4px; overflow:hidden; margin:18px 0 22px; }
+  .lanes span{ flex:1; }
+  .lanes .g1{ background:var(--g1); }
+  .lanes .g2{ background:var(--g2); }
+  .lanes .g3{ background:var(--g3); }
+  .lanes .g4{ background:var(--g4); }
+
+  .brand{ text-align:center; margin-bottom:8px; }
+  .brand p{ font-size:13px; color:var(--muted); margin:0; font-weight:500; }
+  .brand h1{ font-size:14.5px; margin:2px 0 0; color:var(--navy); font-weight:700; }
+
+  label{ display:block; font-size:12.5px; font-weight:700; color:#3D4451; margin-bottom:6px; margin-top:18px; }
+  input{
+    width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:10px;
+    font-size:15px; font-family:inherit; background:#F8FAFB; color:var(--ink);
+    transition: border-color .15s, background .15s;
+  }
+  input:focus{ outline:none; border-color:var(--brand-blue); background:#fff; box-shadow:0 0 0 3px rgba(31,151,212,.15); }
+
+  button{
+    width:100%; background:var(--navy); color:#fff; border:none; padding:13px;
+    border-radius:10px; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer;
+    margin-top:26px; letter-spacing:.2px; transition: background .15s, transform .1s;
+  }
+  button:hover{ background:var(--navy-dark); }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ background:#9AA7B4; cursor:not-allowed; }
+
+  .error{
+    background:var(--red-bg); color:var(--red-txt); font-size:13px; padding:10px 12px;
+    border-radius:8px; margin-top:18px; display:none; font-weight:600;
+  }
+  footer{ text-align:center; font-size:12px; color:rgba(255,255,255,.65); margin-top:22px; position:relative; z-index:1; }
+</style>
+</head>
+<body>
+
+<div>
+  <div class="card">
+    <div class="logo-wrap">
+      <img src="xochi-logo.png" alt="Xochi">
+    </div>
+    <div class="lanes"><span class="g1"></span><span class="g2"></span><span class="g3"></span><span class="g4"></span></div>
+    <div class="brand">
+      <h1>Control de Mantenimiento de Equipos</h1>
+      <p>Corredor de las Flores</p>
+    </div>
+
+    <div class="error" id="error-msg"></div>
+
+    <form id="login-form">
+      <label for="usuario">Usuario</label>
+      <input type="text" id="usuario" autocomplete="username" placeholder="ej. jdiaz" required>
+
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" autocomplete="current-password" required>
+
+      <button type="submit" id="btn-login">Ingresar</button>
+    </form>
+  </div>
+  <footer>Acceso restringido — cuentas creadas por el Administrador</footer>
+</div>
+
+<script type="module">
+  import { supabase } from "./js/supabaseClient.js";
+  import { AUTH_DOMAIN } from "./js/config.js";
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) window.location.href = "dashboard.html";
+
+  const form = document.getElementById("login-form");
+  const errorMsg = document.getElementById("error-msg");
+  const btn = document.getElementById("btn-login");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMsg.style.display = "none";
+
+    const usuario = document.getElementById("usuario").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+
+    if (!usuario || !password) return;
+
+    btn.disabled = true;
+    btn.textContent = "Ingresando...";
+
+    const email = `${usuario}@${AUTH_DOMAIN}`;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      errorMsg.textContent = "Usuario o contraseña incorrectos.";
+      errorMsg.style.display = "block";
+      btn.disabled = false;
+      btn.textContent = "Ingresar";
+      return;
+    }
+
+    window.location.href = "dashboard.html";
+  });
+</script>
+
+</body>
+</html>
