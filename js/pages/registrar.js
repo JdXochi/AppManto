@@ -5,7 +5,7 @@
 import { getEquipos } from "../equiposStore.js";
 import { addMantenimiento, addVistoBueno, subirFirma } from "../data.js";
 import { generarPDFConstancia } from "../pdf.js";
-import { TIPOS_FRECUENCIA, GARITAS, fillSelect } from "../shared.js";
+import { TIPOS_FRECUENCIA, GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
 
 // Limpieza de listeners de window entre re-renders (evita fugas de memoria
 // si la persona entra y sale de esta pestaña varias veces).
@@ -113,9 +113,9 @@ export async function render(container, { session, perfil }) {
   container.querySelector("#f-fecha").valueAsDate = new Date();
 
   fillSelect(fGarita, GARITAS, "Todas");
-  fillSelect(fTipo, Object.keys(TIPOS_FRECUENCIA), "Todos");
 
   const equiposCache = await getEquipos();
+  fillSelect(fTipo, tiposDisponibles(equiposCache).filter(t => equiposCache.some(e => e.tipo === t)), "Todos");
 
   function equipoSeleccionado() {
     return equiposCache.find(e => e.id === fSerie.value);
