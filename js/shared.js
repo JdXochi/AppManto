@@ -27,3 +27,12 @@ export function fillSelect(el, values, placeholder) {
 export function badgeClass(estado) {
   return estado.replace(" ", ".");
 }
+
+// Combina los tipos "conocidos" (con frecuencia sugerida) con los tipos
+// que ya existan en el inventario real (por si alguien agregó uno nuevo,
+// como "UPS", que no estaba en la lista original).
+export function tiposDisponibles(equipos = []) {
+  const set = new Set(Object.keys(TIPOS_FRECUENCIA));
+  equipos.forEach(e => { if (e.tipo) set.add(e.tipo); });
+  return [...set].sort((a, b) => a.localeCompare(b, "es"));
+}

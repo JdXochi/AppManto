@@ -9,7 +9,7 @@ import { supabase } from "./supabaseClient.js";
 export async function listEquipos() {
   const { data, error } = await supabase
     .from("equipos")
-    .select("id, garita, tipo, serie, modelo, encargado_nombre, encargado_puesto, frecuencia_meses")
+    .select("id, garita, tipo, serie, modelo, marca, encargado_nombre, encargado_puesto, frecuencia_meses")
     .eq("activo", true)
     .order("garita", { ascending: true })
     .order("tipo", { ascending: true });
