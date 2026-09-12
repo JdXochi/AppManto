@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Mantenimiento — Xochi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#14406D; --navy-dark:#0F3357; --brand-blue:#1F97D4;
+    --g1:#0B8F47; --g2:#DA1769; --g3:#2A80C1; --g4:#F06E21;
+    --ink:#14202E; --paper:#F3F6F9; --card:#FFFFFF;
+    --line:#E4E9EE; --muted:#66707C;
+    --green-bg:#E4F5EB; --green-txt:#0B7A3E;
+    --yellow-bg:#FFF2DD; --yellow-txt:#B8620A;
+    --red-bg:#FCE9E9; --red-txt:#C22525;
+    --grey-bg:#EEF0F2; --grey-txt:#66707C;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Manrope", -apple-system, BlinkMacSystemFont, sans-serif; }
+
+  header{ background:var(--navy); color:#fff; padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  .header-left{ display:flex; align-items:center; gap:14px; }
+  .logo-chip{ background:#fff; border-radius:9px; padding:5px 10px; display:flex; align-items:center; line-height:0; }
+  .logo-chip img{ height:22px; width:auto; display:block; }
+  header h1{ font-size:16px; margin:0; font-weight:700; }
+  header .who{ font-size:13px; color:#BFD4E8; }
+  .role-pill{ display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(255,255,255,.16); margin-left:8px; text-transform:capitalize; }
+  button.logout{ background:none; border:1.5px solid rgba(255,255,255,.4); color:#fff; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s; }
+  button.logout:hover{ background:rgba(255,255,255,.12); border-color:#fff; }
+
+  .brand-stripe{ display:flex; height:5px; }
+  .brand-stripe span{ flex:1; }
+  .brand-stripe .g1{ background:var(--g1); } .brand-stripe .g2{ background:var(--g2); }
+  .brand-stripe .g3{ background:var(--g3); } .brand-stripe .g4{ background:var(--g4); }
+
+  nav{ display:flex; gap:2px; background:var(--navy-dark); padding:0 24px; overflow-x:auto; }
+  nav button{ background:none; border:none; color:#AFC6DC; padding:13px 15px; font-size:13.5px; cursor:pointer;
+    border-bottom:3px solid transparent; font-weight:600; font-family:inherit; white-space:nowrap; transition:color .15s; }
+  nav button:hover{ color:#fff; }
+  nav button.active{ color:#fff; border-bottom-color:var(--brand-blue); }
+
+  main{ max-width:1100px; margin:0 auto; padding:26px 20px 60px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px; margin-bottom:18px; box-shadow:0 1px 3px rgba(20,32,46,.04); }
+  .card h2{ font-size:15.5px; margin:0 0 4px; color:var(--navy); font-weight:700; }
+  .card .sub{ font-size:12.5px; color:var(--muted); margin:0 0 16px; }
+
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .grid2, .grid3{ grid-template-columns:1fr; } }
+
+  label{ display:block; font-size:12.5px; font-weight:700; color:#3D4451; margin-bottom:6px; }
+  select, input[type=date], input[type=text], input[type=number], textarea{
+    width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:9px;
+    font-size:14px; font-family:inherit; background:#F8FAFB; color:var(--ink); transition:border-color .15s, background .15s; }
+  input:disabled{ background:#F0F1F3; color:#8A94A0; }
+  textarea{ resize:vertical; min-height:64px; }
+  select:focus, input:focus, textarea:focus{ outline:none; border-color:var(--brand-blue); background:#fff; box-shadow:0 0 0 3px rgba(31,151,212,.13); }
+  .field{ margin-bottom:15px; }
+
+  .btnrow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:6px; }
+  button.primary{ background:var(--navy); color:#fff; border:none; padding:11px 22px; border-radius:9px;
+    font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; transition:background .15s; }
+  button.primary:hover{ background:var(--navy-dark); }
+  button.primary:disabled{ background:#9AA7B4; cursor:not-allowed; }
+  button.secondary{ background:#fff; color:var(--navy); border:1.5px solid var(--navy); padding:9.5px 18px;
+    border-radius:9px; font-size:13.5px; font-weight:700; font-family:inherit; cursor:pointer; transition:background .15s; }
+  button.secondary:hover{ background:#EEF4FA; }
+  button.ghost{ background:none; border:none; color:var(--red-txt); font-size:12.5px; cursor:pointer; font-weight:700; font-family:inherit; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .badge{ display:inline-block; padding:3px 11px; border-radius:20px; font-size:12px; font-weight:700; }
+  .badge.Vigente{ background:var(--green-bg); color:var(--green-txt); }
+  .badge.Próximo{ background:var(--yellow-bg); color:var(--yellow-txt); }
+  .badge.Atrasado{ background:var(--red-bg); color:var(--red-txt); }
+  .badge.Sin.registro{ background:var(--grey-bg); color:var(--grey-txt); }
+
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td{ text-align:left; padding:10px 11px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ background:#EEF3F8; color:var(--navy); font-size:11px; text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
+  tr:hover td{ background:#F8FAFC; }
+  .empty{ color:var(--muted); font-size:13.5px; padding:24px 4px; text-align:center; }
+
+  .summary{ display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  .summary .stat{ flex:1; min-width:130px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:15px 17px; box-shadow:0 1px 3px rgba(20,32,46,.04); }
+  .summary .stat .n{ font-size:25px; font-weight:800; color:var(--navy); }
+  .summary .stat .l{ font-size:12px; color:var(--muted); margin-top:2px; font-weight:600; }
+
+  .filters{ display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .filters select{ width:auto; min-width:150px; }
+  .radio-group{ display:flex; gap:20px; margin-top:6px; }
+  .radio-group label{ font-weight:500; display:flex; align-items:center; gap:7px; margin-bottom:0; color:var(--ink); }
+  .radio-group input{ width:auto; }
+  .sigwrap{ border:1.5px solid var(--line); border-radius:9px; background:#fcfcfd; overflow:hidden; }
+  canvas#sigpad{ display:block; width:100%; height:150px; touch-action:none; cursor:crosshair; }
+  .sigbar{ display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-top:1px solid var(--line); background:#F8FAFB; }
+  footer{ text-align:center; font-size:12px; color:var(--muted); padding:22px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-chip"><img src="xochi-logo.png" alt="Xochi"></div>
+    <h1>Control de Mantenimiento <span class="role-pill" id="role-pill">…</span></h1>
+  </div>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <span class="who" id="who">Cargando...</span>
+    <button class="logout" id="btn-logout">Cerrar sesión</button>
+  </div>
+</header>
+<div class="brand-stripe"><span class="g1"></span><span class="g2"></span><span class="g3"></span><span class="g4"></span></div>
+
+<nav id="nav">
+  <button class="tab" data-view="registrar" data-roles="admin,tecnico">Registrar</button>
+  <button class="tab" data-view="inventario" data-roles="admin,tecnico,usuario">Inventario</button>
+  <button class="tab" data-view="estado" data-roles="admin,tecnico">Estado de equipos</button>
+  <button class="tab" data-view="historial" data-roles="admin,tecnico">Historial</button>
+  <button class="tab" data-view="reportes" data-roles="admin,tecnico,usuario">Reportes</button>
+</nav>
+
+<main>
+  <section id="registrar" class="view"></section>
+  <section id="inventario" class="view"></section>
+  <section id="estado" class="view"></section>
+  <section id="historial" class="view"></section>
+  <section id="reportes" class="view"></section>
+</main>
+
+<footer>Xochi · Corredor de las Flores — Departamento de IT</footer>
+
+<script type="module">
+import { requireSession, getPerfilActual, cerrarSesion } from "./js/supabaseClient.js";
+import * as RegistrarPage from "./js/pages/registrar.js";
+import * as InventarioPage from "./js/pages/inventario.js";
+import * as EstadoPage from "./js/pages/estado.js";
+import * as HistorialPage from "./js/pages/historial.js";
+import * as ReportesPage from "./js/pages/reportes.js";
+
+const PAGES = {
+  registrar: RegistrarPage,
+  inventario: InventarioPage,
+  estado: EstadoPage,
+  historial: HistorialPage,
+  reportes: ReportesPage,
+};
+
+// ---------------- Auth / perfil ----------------
+const session = await requireSession();
+let perfil = null;
+if (session) perfil = await getPerfilActual();
+
+if (!perfil) {
+  document.getElementById("who").textContent = "Perfil no encontrado — contacta al Administrador.";
+} else {
+  document.getElementById("who").textContent = `${perfil.nombre} (@${perfil.username || "—"})`;
+  document.getElementById("role-pill").textContent = perfil.rol;
+}
+document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+
+const ROL = perfil ? perfil.rol : "usuario";
+const authCtx = { ROL, perfil, session };
+
+// Muestra solo las pestañas permitidas para este rol
+document.querySelectorAll("#nav .tab").forEach(btn => {
+  const roles = btn.dataset.roles.split(",");
+  btn.style.display = roles.includes(ROL) ? "" : "none";
+});
+
+const primeraVisible = [...document.querySelectorAll("#nav .tab")].find(b => b.style.display !== "none");
+
+// ---------------- Navegación: cada pestaña manda llamar a su propio módulo ----------------
+async function activarVista(view) {
+  document.querySelectorAll("#nav .tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+
+  const btn = document.querySelector(`#nav .tab[data-view="${view}"]`);
+  if (btn) btn.classList.add("active");
+  const section = document.getElementById(view);
+  section.classList.add("active");
+
+  try {
+    await PAGES[view].render(section, authCtx);
+  } catch (err) {
+    console.error(err);
+    section.innerHTML = `<div class="card"><p style="color:#B42318">Ocurrió un error cargando esta sección: ${err.message}</p></div>`;
+  }
+}
+
+document.querySelectorAll("#nav .tab").forEach(btn => {
+  btn.addEventListener("click", () => activarVista(btn.dataset.view));
+});
+
+if (primeraVisible) activarVista(primeraVisible.dataset.view);
+</script>
+</body>
+</html>
