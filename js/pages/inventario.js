@@ -5,7 +5,7 @@
 import { getEquipos, invalidateEquipos } from "../equiposStore.js";
 import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
 import { addEquipo, addTipoEquipo } from "../data.js";
-import { GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
+import { GARITAS, fillSelect, tiposDisponibles, normalizarTexto } from "../shared.js";
 
 const NUEVO_TIPO = "__nuevo__";
 
@@ -21,7 +21,7 @@ export async function render(container, { ROL }) {
         </div>
         <div class="field">
           <label for="i-tipo">Tipo de equipo</label>
-          <select id="i-tipo"></select>
+          <select id="i-tipo"><option value="">Selecciona un tipo...</option></select>
         </div>
         <div class="field">
           <label for="i-serie">Serie / Código de inventario</label>
@@ -69,6 +69,7 @@ export async function render(container, { ROL }) {
     <div class="card">
       <h2>Equipos registrados <span class="hint" id="inv-count"></span></h2>
       <div class="filters">
+        <input type="text" id="filter-busqueda-inv" placeholder="Buscar por tipo, serie, marca, modelo o encargado..." style="flex:1; min-width:220px;">
         <select id="filter-garita-inv"><option value="">Todas las garitas</option></select>
         <select id="filter-tipo-inv"><option value="">Todos los tipos</option></select>
       </div>
@@ -101,6 +102,9 @@ export async function render(container, { ROL }) {
     async function refreshTipoSelect() {
       const tipos = await getTiposEquipo();
       iTipo.innerHTML = "";
+      const oVacio = document.createElement("option");
+      oVacio.value = ""; oVacio.textContent = "Selecciona un tipo...";
+      iTipo.appendChild(oVacio);
       tipos.forEach(t => {
         const o = document.createElement("option");
         o.value = t.id; o.textContent = `${t.descripcion} (cada ${t.frecuencia_meses} meses)`;
@@ -141,6 +145,7 @@ export async function render(container, { ROL }) {
       if (!serie) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la serie/código del equipo."; return; }
 
       let tipo_id = iTipo.value;
+      if (!tipo_id) { msg.style.color = "#B42318"; msg.textContent = "Selecciona el tipo de equipo."; return; }
 
       try {
         if (tipo_id === NUEVO_TIPO) {
@@ -159,6 +164,7 @@ export async function render(container, { ROL }) {
         msg.style.color = "#1E7B34"; msg.textContent = "Equipo agregado.";
         setTimeout(() => msg.textContent = "", 2500);
         invalidateEquipos();
+        await refreshFiltroTipo();
         await renderTabla();
       } catch (err) {
         msg.style.color = "#B42318";
@@ -170,14 +176,38 @@ export async function render(container, { ROL }) {
   fillSelect(container.querySelector("#filter-garita-inv"), GARITAS, "Todas las garitas");
   container.querySelector("#filter-garita-inv").addEventListener("change", renderTabla);
   container.querySelector("#filter-tipo-inv").addEventListener("change", renderTabla);
+  container.querySelector("#filter-busqueda-inv").addEventListener("input", renderTabla);
+
+  // El filtro de "Tipo" se llena una sola vez aquí (y se refresca solo si
+  // aparece un tipo nuevo) -- si se reconstruyera dentro de renderTabla(),
+  // cada vez que alguien lo cambiara se perdería la selección al instante.
+  async function refreshFiltroTipo() {
+    const equipos = await getEquipos();
+    const filtroTipo = container.querySelector("#filter-tipo-inv");
+    const valorActual = filtroTipo.value;
+    fillSelect(filtroTipo, tiposDisponibles(equipos), "Todos los tipos");
+    if ([...filtroTipo.options].some(o => o.value === valorActual)) {
+      filtroTipo.value = valorActual;
+    }
+  }
+  await refreshFiltroTipo();
 
   async function renderTabla() {
     const equipos = await getEquipos();
-    fillSelect(container.querySelector("#filter-tipo-inv"), tiposDisponibles(equipos), "Todos los tipos");
-
     const fg = container.querySelector("#filter-garita-inv").value;
     const ft = container.querySelector("#filter-tipo-inv").value;
-    const filtrados = equipos.filter(e => (!fg || e.garita === fg) && (!ft || e.tipo === ft));
+    const q = normalizarTexto(container.querySelector("#filter-busqueda-inv").value.trim());
+
+    const filtrados = equipos.filter(e => {
+      if (fg && e.garita !== fg) return false;
+      if (ft && e.tipo !== ft) return false;
+      if (q) {
+        const texto = normalizarTexto([e.tipo, e.serie, e.marca, e.modelo, e.encargado_nombre, e.encargado_puesto]
+          .filter(Boolean).join(" "));
+        if (!texto.includes(q)) return false;
+      }
+      return true;
+    });
 
     container.querySelector("#inv-count").textContent = `(${equipos.length} en total)`;
     container.querySelector("#inv-empty").style.display = filtrados.length ? "none" : "block";
