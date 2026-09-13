@@ -122,6 +122,7 @@
   <button class="tab" data-view="estado" data-roles="admin,tecnico">Estado de equipos</button>
   <button class="tab" data-view="historial" data-roles="admin,tecnico">Historial</button>
   <button class="tab" data-view="reportes" data-roles="admin,tecnico,usuario">Reportes</button>
+  <button class="tab" data-view="catalogo" data-roles="admin">Catálogo de equipos</button>
 </nav>
 
 <main>
@@ -130,6 +131,7 @@
   <section id="estado" class="view"></section>
   <section id="historial" class="view"></section>
   <section id="reportes" class="view"></section>
+  <section id="catalogo" class="view"></section>
 </main>
 
 <footer>Xochi · Corredor de las Flores — Departamento de IT</footer>
@@ -141,6 +143,7 @@ import * as InventarioPage from "./js/pages/inventario.js";
 import * as EstadoPage from "./js/pages/estado.js";
 import * as HistorialPage from "./js/pages/historial.js";
 import * as ReportesPage from "./js/pages/reportes.js";
+import * as CatalogoPage from "./js/pages/catalogo.js";
 
 const PAGES = {
   registrar: RegistrarPage,
@@ -148,6 +151,7 @@ const PAGES = {
   estado: EstadoPage,
   historial: HistorialPage,
   reportes: ReportesPage,
+  catalogo: CatalogoPage,
 };
 
 // ---------------- Auth / perfil ----------------
