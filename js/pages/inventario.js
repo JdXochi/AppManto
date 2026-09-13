@@ -73,7 +73,7 @@ export async function render(container, { ROL }) {
         <select id="filter-tipo-inv"><option value="">Todos los tipos</option></select>
       </div>
       <div style="overflow-x:auto">
-        <table id="tabla-inventario">
+        <table id="tabla-inventario" class="responsive-cards">
           <thead><tr><th>Garita</th><th>Tipo</th><th>Serie / Código</th><th>Marca</th><th>Modelo</th><th>Encargado</th><th>Puesto</th></tr></thead>
           <tbody></tbody>
         </table>
@@ -186,7 +186,7 @@ export async function render(container, { ROL }) {
     tbody.innerHTML = "";
     filtrados.forEach(e => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${e.garita}</td><td>${e.tipo}</td><td><b>${e.serie}</b></td><td>${e.marca||""}</td><td>${e.modelo||""}</td><td>${e.encargado_nombre||""}</td><td>${e.encargado_puesto||""}</td>`;
+      tr.innerHTML = `<td data-label="Garita">${e.garita}</td><td data-label="Tipo">${e.tipo}</td><td data-label="Serie / Código"><b>${e.serie}</b></td><td data-label="Marca">${e.marca||""}</td><td data-label="Modelo">${e.modelo||""}</td><td data-label="Encargado">${e.encargado_nombre||""}</td><td data-label="Puesto">${e.encargado_puesto||""}</td>`;
       tbody.appendChild(tr);
     });
   }

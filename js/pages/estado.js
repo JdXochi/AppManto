@@ -22,7 +22,7 @@ export async function render(container) {
         </select>
       </div>
       <div style="overflow-x:auto">
-        <table id="tabla-estado">
+        <table id="tabla-estado" class="responsive-cards">
           <thead><tr><th>Garita</th><th>Tipo</th><th>Serie</th><th>Encargado</th><th>Última fecha</th><th>Próxima fecha</th><th>Estado</th></tr></thead>
           <tbody></tbody>
         </table>
@@ -53,9 +53,9 @@ export async function render(container) {
       .filter(s => (!fg || s.garita === fg) && (!fs || s.estado === fs))
       .forEach(s => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${s.garita}</td><td>${s.tipo}</td><td><b>${s.serie}</b></td><td>${s.encargado_nombre||""}</td>
-          <td>${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td>${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
-          <td><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>`;
+        tr.innerHTML = `<td data-label="Garita">${s.garita}</td><td data-label="Tipo">${s.tipo}</td><td data-label="Serie"><b>${s.serie}</b></td><td data-label="Encargado">${s.encargado_nombre||""}</td>
+          <td data-label="Última fecha">${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td data-label="Próxima fecha">${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
+          <td data-label="Estado"><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>`;
         tbody.appendChild(tr);
       });
   }

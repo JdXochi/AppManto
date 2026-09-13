@@ -31,7 +31,7 @@ export async function render(container) {
       <h2>Catálogo actual</h2>
       <p class="sub">Cambiar la frecuencia aquí aplica de inmediato a todos los equipos de ese tipo.</p>
       <div style="overflow-x:auto">
-        <table id="tabla-tipos">
+        <table id="tabla-tipos" class="responsive-cards">
           <thead><tr><th>Descripción</th><th>Frecuencia (meses)</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
@@ -69,15 +69,15 @@ export async function render(container) {
     tipos.forEach(t => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>
+        <td data-label="Descripción">
           <span class="valor-desc">${t.descripcion}</span>
           <input type="text" class="edit-desc" value="${t.descripcion}" style="display:none">
         </td>
-        <td>
+        <td data-label="Frecuencia (meses)">
           <span class="valor-freq">${t.frecuencia_meses}</span>
           <input type="number" class="edit-freq" min="1" max="24" value="${t.frecuencia_meses}" style="display:none; width:90px">
         </td>
-        <td>
+        <td data-label="Acciones">
           <button class="secondary btn-editar">Editar</button>
           <button class="primary btn-guardar" style="display:none">Guardar</button>
           <button class="ghost btn-cancelar" style="display:none">Cancelar</button>

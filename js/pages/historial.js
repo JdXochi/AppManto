@@ -14,7 +14,7 @@ export async function render(container, { ROL }) {
         <select id="filter-garita-hist"><option value="">Todas las garitas</option></select>
       </div>
       <div style="overflow-x:auto">
-        <table id="tabla-historial">
+        <table id="tabla-historial" class="responsive-cards">
           <thead><tr><th>Fecha</th><th>Serie</th><th>Garita / Tipo</th><th>Técnico</th><th>Vo.Bo.</th><th>Firma</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
@@ -40,13 +40,13 @@ export async function render(container, { ROL }) {
       const vobo = (r.vistos_buenos && r.vistos_buenos[0]) || {};
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${fmtDate(r.fecha)}</td>
-        <td><b>${eq.serie||""}</b></td>
-        <td>${eq.garita||""} / ${eq.tipo||""}</td>
-        <td>${r.tecnico_nombre||""}</td>
-        <td>${vobo.nombre||""}${vobo.puesto ? " · "+vobo.puesto : ""}</td>
-        <td>${vobo.tipo_firma||""}</td>
-        <td>${ROL === "admin" ? `<button class="ghost" data-id="${r.id}">Eliminar</button>` : ""}</td>`;
+        <td data-label="Fecha">${fmtDate(r.fecha)}</td>
+        <td data-label="Serie"><b>${eq.serie||""}</b></td>
+        <td data-label="Garita / Tipo">${eq.garita||""} / ${eq.tipo||""}</td>
+        <td data-label="Técnico">${r.tecnico_nombre||""}</td>
+        <td data-label="Vo.Bo.">${vobo.nombre||""}${vobo.puesto ? " · "+vobo.puesto : ""}</td>
+        <td data-label="Firma">${vobo.tipo_firma||""}</td>
+        <td data-label="Acciones">${ROL === "admin" ? `<button class="ghost" data-id="${r.id}">Eliminar</button>` : ""}</td>`;
       tbody.appendChild(tr);
     });
 
