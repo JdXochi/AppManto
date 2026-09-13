@@ -3,11 +3,6 @@
 // Constantes y helpers compartidos entre páginas
 // =========================================================
 
-export const TIPOS_FRECUENCIA = {
-  "Impresoras": 3, "Laptops": 3, "NVR's": 3, "Cuarto de F.O.": 2,
-  "Cámaras": 3, "Controles de Acceso": 3, "Servidor de Video": 6, "DataCenter": 6,
-};
-
 export const GARITAS = ["G1", "G2", "G3", "G4", "Central"];
 
 export function fillSelect(el, values, placeholder) {
@@ -28,11 +23,10 @@ export function badgeClass(estado) {
   return estado.replace(" ", ".");
 }
 
-// Combina los tipos "conocidos" (con frecuencia sugerida) con los tipos
-// que ya existan en el inventario real (por si alguien agregó uno nuevo,
-// como "UPS", que no estaba en la lista original).
+// Tipos de equipo presentes en una lista de equipos (para filtros).
+// El catálogo "oficial" de tipos vive en tiposEquipoStore.js.
 export function tiposDisponibles(equipos = []) {
-  const set = new Set(Object.keys(TIPOS_FRECUENCIA));
+  const set = new Set();
   equipos.forEach(e => { if (e.tipo) set.add(e.tipo); });
   return [...set].sort((a, b) => a.localeCompare(b, "es"));
 }

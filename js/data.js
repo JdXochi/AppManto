@@ -4,17 +4,55 @@
 // =========================================================
 import { supabase } from "./supabaseClient.js";
 
+// ---------- Tipos de equipo (catálogo) ----------
+
+export async function listTiposEquipo() {
+  const { data, error } = await supabase
+    .from("tipos_equipo")
+    .select("id, descripcion, frecuencia_meses")
+    .order("descripcion", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function addTipoEquipo(tipo) {
+  const { data, error } = await supabase
+    .from("tipos_equipo")
+    .insert(tipo)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTipoEquipo(id, cambios) {
+  const { data, error } = await supabase
+    .from("tipos_equipo")
+    .update(cambios)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // ---------- Equipos (inventario) ----------
 
 export async function listEquipos() {
   const { data, error } = await supabase
     .from("equipos")
-    .select("id, garita, tipo, serie, modelo, marca, encargado_nombre, encargado_puesto, frecuencia_meses")
+    .select(`
+      id, garita, serie, modelo, marca, encargado_nombre, encargado_puesto, tipo_id,
+      tipos_equipo ( descripcion, frecuencia_meses )
+    `)
     .eq("activo", true)
-    .order("garita", { ascending: true })
-    .order("tipo", { ascending: true });
+    .order("garita", { ascending: true });
   if (error) throw error;
-  return data;
+  return data.map(e => ({
+    ...e,
+    tipo: e.tipos_equipo?.descripcion || "",
+    frecuencia_meses: e.tipos_equipo?.frecuencia_meses ?? null,
+  }));
 }
 
 export async function addEquipo(equipo) {
@@ -45,12 +83,20 @@ export async function listMantenimientos() {
     .from("mantenimientos")
     .select(`
       id, fecha, tecnico_nombre, actividades, hallazgos, created_at,
-      equipos ( garita, tipo, serie, frecuencia_meses ),
+      equipos ( garita, serie, tipos_equipo ( descripcion, frecuencia_meses ) ),
       vistos_buenos ( nombre, puesto, tipo_firma, firma_path )
     `)
     .order("fecha", { ascending: false });
   if (error) throw error;
-  return data;
+  return data.map(r => ({
+    ...r,
+    equipos: r.equipos ? {
+      garita: r.equipos.garita,
+      serie: r.equipos.serie,
+      tipo: r.equipos.tipos_equipo?.descripcion || "",
+      frecuencia_meses: r.equipos.tipos_equipo?.frecuencia_meses ?? null,
+    } : null,
+  }));
 }
 
 export async function addMantenimiento(registro) {
