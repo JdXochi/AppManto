@@ -22,15 +22,31 @@
   body{ margin:0; background:var(--paper); color:var(--ink);
     font-family:"Manrope", -apple-system, BlinkMacSystemFont, sans-serif; }
 
-  header{ background:var(--navy); color:#fff; padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
-  .header-left{ display:flex; align-items:center; gap:14px; }
-  .logo-chip{ background:#fff; border-radius:9px; padding:5px 10px; display:flex; align-items:center; line-height:0; }
+  header{ background:var(--navy); color:#fff; padding:14px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; position:relative; }
+  .header-left{ display:flex; align-items:center; gap:14px; min-width:0; flex:1 1 auto; overflow:hidden; }
+  .header-left h1{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .header-right{ display:flex; align-items:center; gap:14px; }
+  .logo-chip{ background:#fff; border-radius:9px; padding:5px 10px; display:flex; align-items:center; line-height:0; flex-shrink:0; }
   .logo-chip img{ height:22px; width:auto; display:block; }
   header h1{ font-size:16px; margin:0; font-weight:700; }
-  header .who{ font-size:13px; color:#BFD4E8; }
+  header .who{ font-size:13px; color:#BFD4E8; white-space:nowrap; }
   .role-pill{ display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; background:rgba(255,255,255,.16); margin-left:8px; text-transform:capitalize; }
-  button.logout{ background:none; border:1.5px solid rgba(255,255,255,.4); color:#fff; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s; }
+  button.logout{ background:none; border:1.5px solid rgba(255,255,255,.4); color:#fff; padding:7px 14px; border-radius:8px; font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; transition:background .15s,border-color .15s; white-space:nowrap; }
   button.logout:hover{ background:rgba(255,255,255,.12); border-color:#fff; }
+
+  .menu-toggle{
+    display:none; background:none; border:none; cursor:pointer; padding:8px;
+    flex-direction:column; gap:5px; justify-content:center; align-items:center; flex-shrink:0;
+  }
+  .menu-toggle span{ width:22px; height:2px; background:#fff; border-radius:2px; transition:transform .15s, opacity .15s; }
+  .menu-toggle.open span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
+  .menu-toggle.open span:nth-child(2){ opacity:0; }
+  .menu-toggle.open span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+
+  .nav-backdrop{ display:none; position:fixed; inset:0; background:rgba(10,20,35,.45); z-index:15; }
+  .nav-backdrop.open{ display:block; }
+
+  .nav-mobile-footer{ display:none; }
 
   .brand-stripe{ display:flex; height:5px; }
   .brand-stripe span{ flex:1; }
@@ -100,6 +116,38 @@
   canvas#sigpad{ display:block; width:100%; height:150px; touch-action:none; cursor:crosshair; }
   .sigbar{ display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-top:1px solid var(--line); background:#F8FAFB; }
   footer{ text-align:center; font-size:12px; color:var(--muted); padding:22px; }
+
+  /* ===================== Responsive: celular / tablet angosta ===================== */
+  @media (max-width: 780px){
+    header{ flex-wrap:nowrap; }
+    .header-right{ display:none; }
+    .menu-toggle{ display:flex; }
+
+    nav{
+      display:none; flex-direction:column; gap:2px; padding:10px;
+      position:fixed; top:0; right:0; height:100%; width:78%; max-width:300px;
+      background:var(--navy-dark); z-index:20; overflow-y:auto;
+      box-shadow:-8px 0 24px rgba(0,0,0,.25);
+    }
+    nav.nav-open{ display:flex; }
+    nav button.tab{
+      text-align:left; padding:13px 14px; border-bottom:none; border-left:3px solid transparent;
+      border-radius:8px; font-size:14.5px;
+    }
+    nav button.tab.active{ border-left-color:var(--brand-blue); background:rgba(255,255,255,.08); }
+
+    .nav-mobile-footer{
+      display:flex; flex-direction:column; gap:10px; margin-top:auto;
+      padding:16px 14px 6px; border-top:1px solid rgba(255,255,255,.15);
+    }
+    .who-mobile{ font-size:12.5px; color:#BFD4E8; }
+    .logout-mobile{
+      background:none; border:1.5px solid rgba(255,255,255,.4); color:#fff; padding:9px 14px;
+      border-radius:8px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; text-align:left;
+    }
+
+    main{ padding:20px 14px 50px; }
+  }
 </style>
 </head>
 <body>
@@ -109,10 +157,13 @@
     <div class="logo-chip"><img src="xochi-logo.png" alt="Xochi"></div>
     <h1>Control de Mantenimiento <span class="role-pill" id="role-pill">…</span></h1>
   </div>
-  <div style="display:flex; align-items:center; gap:14px;">
+  <div class="header-right">
     <span class="who" id="who">Cargando...</span>
     <button class="logout" id="btn-logout">Cerrar sesión</button>
   </div>
+  <button class="menu-toggle" id="btn-menu-toggle" aria-label="Abrir menú" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
 </header>
 <div class="brand-stripe"><span class="g1"></span><span class="g2"></span><span class="g3"></span><span class="g4"></span></div>
 
@@ -123,7 +174,12 @@
   <button class="tab" data-view="historial" data-roles="admin,tecnico">Historial</button>
   <button class="tab" data-view="reportes" data-roles="admin,tecnico,usuario">Reportes</button>
   <button class="tab" data-view="catalogo" data-roles="admin">Catálogo de equipos</button>
+  <div class="nav-mobile-footer">
+    <span class="who-mobile" id="who-mobile"></span>
+    <button class="logout-mobile" id="btn-logout-mobile">Cerrar sesión</button>
+  </div>
 </nav>
+<div class="nav-backdrop" id="nav-backdrop"></div>
 
 <main>
   <section id="registrar" class="view"></section>
@@ -161,11 +217,14 @@ if (session) perfil = await getPerfilActual();
 
 if (!perfil) {
   document.getElementById("who").textContent = "Perfil no encontrado — contacta al Administrador.";
+  document.getElementById("who-mobile").textContent = "Perfil no encontrado";
 } else {
   document.getElementById("who").textContent = `${perfil.nombre} (@${perfil.username || "—"})`;
+  document.getElementById("who-mobile").textContent = `${perfil.nombre} (@${perfil.username || "—"})`;
   document.getElementById("role-pill").textContent = perfil.rol;
 }
 document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+document.getElementById("btn-logout-mobile").addEventListener("click", cerrarSesion);
 
 const ROL = perfil ? perfil.rol : "usuario";
 const authCtx = { ROL, perfil, session };
@@ -177,6 +236,26 @@ document.querySelectorAll("#nav .tab").forEach(btn => {
 });
 
 const primeraVisible = [...document.querySelectorAll("#nav .tab")].find(b => b.style.display !== "none");
+
+// ---------------- Menú móvil (hamburguesa) ----------------
+const nav = document.getElementById("nav");
+const menuToggle = document.getElementById("btn-menu-toggle");
+const navBackdrop = document.getElementById("nav-backdrop");
+
+function cerrarMenuMovil() {
+  nav.classList.remove("nav-open");
+  navBackdrop.classList.remove("open");
+  menuToggle.classList.remove("open");
+  menuToggle.setAttribute("aria-expanded", "false");
+}
+function toggleMenuMovil() {
+  const abierto = nav.classList.toggle("nav-open");
+  navBackdrop.classList.toggle("open", abierto);
+  menuToggle.classList.toggle("open", abierto);
+  menuToggle.setAttribute("aria-expanded", String(abierto));
+}
+menuToggle.addEventListener("click", toggleMenuMovil);
+navBackdrop.addEventListener("click", cerrarMenuMovil);
 
 // ---------------- Navegación: cada pestaña manda llamar a su propio módulo ----------------
 async function activarVista(view) {
@@ -197,7 +276,10 @@ async function activarVista(view) {
 }
 
 document.querySelectorAll("#nav .tab").forEach(btn => {
-  btn.addEventListener("click", () => activarVista(btn.dataset.view));
+  btn.addEventListener("click", () => {
+    activarVista(btn.dataset.view);
+    cerrarMenuMovil();
+  });
 });
 
 if (primeraVisible) activarVista(primeraVisible.dataset.view);
