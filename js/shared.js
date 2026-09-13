@@ -23,6 +23,12 @@ export function badgeClass(estado) {
   return estado.replace(" ", ".");
 }
 
+// Quita acentos para que las búsquedas encuentren "Lopez" aunque el dato
+// guardado sea "López" (la gente no siempre escribe los acentos al buscar).
+export function normalizarTexto(s) {
+  return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 // Tipos de equipo presentes en una lista de equipos (para filtros).
 // El catálogo "oficial" de tipos vive en tiposEquipoStore.js.
 export function tiposDisponibles(equipos = []) {
