@@ -147,6 +147,24 @@
     }
 
     main{ padding:20px 14px 50px; }
+
+    /* Tablas anchas -> tarjetas apiladas, más fáciles de leer con el pulgar */
+    table.responsive-cards thead{ display:none; }
+    table.responsive-cards, table.responsive-cards tbody,
+    table.responsive-cards tr, table.responsive-cards td{ display:block; width:100%; }
+    table.responsive-cards tr{
+      background:#fff; border:1px solid var(--line); border-radius:10px;
+      margin-bottom:10px; padding:4px 14px;
+    }
+    table.responsive-cards td{
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      padding:9px 0; border-bottom:1px solid var(--line); text-align:right; font-size:13.5px;
+    }
+    table.responsive-cards td:last-child{ border-bottom:none; }
+    table.responsive-cards td::before{
+      content: attr(data-label); font-weight:700; color:var(--navy); font-size:11px;
+      text-transform:uppercase; letter-spacing:.3px; text-align:left; flex-shrink:0;
+    }
   }
 </style>
 </head>
