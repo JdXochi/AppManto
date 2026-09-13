@@ -5,7 +5,7 @@
 import { getEquipos } from "../equiposStore.js";
 import { addMantenimiento, addVistoBueno, subirFirma } from "../data.js";
 import { generarPDFConstancia } from "../pdf.js";
-import { TIPOS_FRECUENCIA, GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
+import { GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
 
 // Limpieza de listeners de window entre re-renders (evita fugas de memoria
 // si la persona entra y sale de esta pestaña varias veces).

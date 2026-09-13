@@ -3,14 +3,17 @@
 // Página: Inventario de equipos
 // =========================================================
 import { getEquipos, invalidateEquipos } from "../equiposStore.js";
-import { addEquipo } from "../data.js";
-import { TIPOS_FRECUENCIA, GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
+import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
+import { addEquipo, addTipoEquipo } from "../data.js";
+import { GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
+
+const NUEVO_TIPO = "__nuevo__";
 
 export async function render(container, { ROL }) {
   container.innerHTML = `
     <div class="card" id="card-agregar-equipo" style="display:none">
       <h2>Agregar equipo al inventario</h2>
-      <p class="sub">Una fila por cada unidad física, identificada por su serie o código. Si el tipo de equipo no existe todavía (ej. "UPS"), simplemente escríbelo — se agrega solo.</p>
+      <p class="sub">Una fila por cada unidad física, identificada por su serie o código.</p>
       <div class="grid3">
         <div class="field">
           <label for="i-garita">Garita</label>
@@ -18,14 +21,25 @@ export async function render(container, { ROL }) {
         </div>
         <div class="field">
           <label for="i-tipo">Tipo de equipo</label>
-          <input type="text" id="i-tipo" list="i-tipo-list" placeholder="Ej. Impresoras, UPS...">
-          <datalist id="i-tipo-list"></datalist>
+          <select id="i-tipo"></select>
         </div>
         <div class="field">
           <label for="i-serie">Serie / Código de inventario</label>
           <input type="text" id="i-serie" placeholder="Ej. LAP-G1-002">
         </div>
       </div>
+
+      <div class="grid2" id="wrap-nuevo-tipo" style="display:none">
+        <div class="field">
+          <label for="i-tipo-nuevo-desc">Nombre del tipo nuevo</label>
+          <input type="text" id="i-tipo-nuevo-desc" placeholder="Ej. Monitor">
+        </div>
+        <div class="field">
+          <label for="i-tipo-nuevo-frecuencia">Frecuencia para este tipo (meses)</label>
+          <input type="number" id="i-tipo-nuevo-frecuencia" min="1" max="24">
+        </div>
+      </div>
+
       <div class="grid3">
         <div class="field">
           <label for="i-marca">Marca</label>
@@ -34,10 +48,6 @@ export async function render(container, { ROL }) {
         <div class="field">
           <label for="i-modelo">Modelo</label>
           <input type="text" id="i-modelo" placeholder="Ej. Latitude 5420">
-        </div>
-        <div class="field">
-          <label for="i-frecuencia">Frecuencia (meses)</label>
-          <input type="number" id="i-frecuencia" min="1" max="24">
         </div>
       </div>
       <div class="grid2">
@@ -72,15 +82,14 @@ export async function render(container, { ROL }) {
     </div>
   `;
 
-  const equiposIniciales = await getEquipos();
-
   if (ROL === "admin") {
     container.querySelector("#card-agregar-equipo").style.display = "block";
 
     const iGarita = container.querySelector("#i-garita");
     const iTipo = container.querySelector("#i-tipo");
-    const iTipoList = container.querySelector("#i-tipo-list");
-    const iFrecuencia = container.querySelector("#i-frecuencia");
+    const wrapNuevoTipo = container.querySelector("#wrap-nuevo-tipo");
+    const iTipoNuevoDesc = container.querySelector("#i-tipo-nuevo-desc");
+    const iTipoNuevoFrecuencia = container.querySelector("#i-tipo-nuevo-frecuencia");
     const iSerie = container.querySelector("#i-serie");
     const iMarca = container.querySelector("#i-marca");
     const iModelo = container.querySelector("#i-modelo");
@@ -89,30 +98,33 @@ export async function render(container, { ROL }) {
 
     fillSelect(iGarita, GARITAS, null);
 
-    function refreshTiposList() {
-      iTipoList.innerHTML = "";
-      tiposDisponibles(equiposIniciales).forEach(t => {
+    async function refreshTipoSelect() {
+      const tipos = await getTiposEquipo();
+      iTipo.innerHTML = "";
+      tipos.forEach(t => {
         const o = document.createElement("option");
-        o.value = t;
-        iTipoList.appendChild(o);
+        o.value = t.id; o.textContent = `${t.descripcion} (cada ${t.frecuencia_meses} meses)`;
+        iTipo.appendChild(o);
       });
+      const oNuevo = document.createElement("option");
+      oNuevo.value = NUEVO_TIPO; oNuevo.textContent = "+ Nuevo tipo de equipo...";
+      iTipo.appendChild(oNuevo);
     }
-    refreshTiposList();
+    await refreshTipoSelect();
 
-    // Si el tipo escrito coincide con uno conocido, sugerimos su frecuencia
-    // (sin pisar un valor que la persona ya haya escrito a mano para un tipo nuevo).
-    iTipo.addEventListener("input", () => {
-      const sugerida = TIPOS_FRECUENCIA[iTipo.value.trim()];
-      if (sugerida) iFrecuencia.value = sugerida;
+    iTipo.addEventListener("change", () => {
+      wrapNuevoTipo.style.display = iTipo.value === NUEVO_TIPO ? "grid" : "none";
     });
 
     function limpiarFormulario() {
       iGarita.selectedIndex = 0;
-      iTipo.value = "";
+      iTipo.selectedIndex = 0;
+      wrapNuevoTipo.style.display = "none";
+      iTipoNuevoDesc.value = "";
+      iTipoNuevoFrecuencia.value = "";
       iSerie.value = "";
       iMarca.value = "";
       iModelo.value = "";
-      iFrecuencia.value = "";
       iEncargado.value = "";
       iPuesto.value = "";
     }
@@ -120,29 +132,37 @@ export async function render(container, { ROL }) {
     container.querySelector("#btn-agregar-inv").addEventListener("click", async () => {
       const msg = container.querySelector("#inv-msg");
       const garita = iGarita.value;
-      const tipo = iTipo.value.trim();
       const serie = iSerie.value.trim();
       const marca = iMarca.value.trim();
       const modelo = iModelo.value.trim();
       const encargado_nombre = iEncargado.value.trim();
       const encargado_puesto = iPuesto.value.trim();
-      const frecuencia_meses = Number(iFrecuencia.value) || TIPOS_FRECUENCIA[tipo] || null;
 
-      if (!tipo) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el tipo de equipo."; return; }
       if (!serie) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la serie/código del equipo."; return; }
-      if (!frecuencia_meses) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la frecuencia (en meses) para este tipo de equipo."; return; }
+
+      let tipo_id = iTipo.value;
 
       try {
-        await addEquipo({ garita, tipo, serie, marca, modelo, encargado_nombre, encargado_puesto, frecuencia_meses });
+        if (tipo_id === NUEVO_TIPO) {
+          const descripcion = iTipoNuevoDesc.value.trim();
+          const frecuencia_meses = Number(iTipoNuevoFrecuencia.value);
+          if (!descripcion) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el nombre del tipo nuevo."; return; }
+          if (!frecuencia_meses) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la frecuencia del tipo nuevo."; return; }
+          const nuevoTipo = await addTipoEquipo({ descripcion, frecuencia_meses });
+          tipo_id = nuevoTipo.id;
+          invalidateTiposEquipo();
+        }
+
+        await addEquipo({ garita, tipo_id, serie, marca, modelo, encargado_nombre, encargado_puesto });
         limpiarFormulario();
+        await refreshTipoSelect();
         msg.style.color = "#1E7B34"; msg.textContent = "Equipo agregado.";
         setTimeout(() => msg.textContent = "", 2500);
         invalidateEquipos();
         await renderTabla();
-        refreshTiposList();
       } catch (err) {
         msg.style.color = "#B42318";
-        msg.textContent = err.message.includes("duplicate") ? "Ya existe un equipo con esa serie." : ("Error: " + err.message);
+        msg.textContent = err.message.includes("duplicate") ? "Ya existe un equipo o tipo con ese nombre/serie." : ("Error: " + err.message);
       }
     });
   }
@@ -153,7 +173,7 @@ export async function render(container, { ROL }) {
 
   async function renderTabla() {
     const equipos = await getEquipos();
-    fillSelect(container.querySelector("#filter-tipo-inv"), tiposDisponibles(equipos).filter(t => equipos.some(e => e.tipo === t)), "Todos los tipos");
+    fillSelect(container.querySelector("#filter-tipo-inv"), tiposDisponibles(equipos), "Todos los tipos");
 
     const fg = container.querySelector("#filter-garita-inv").value;
     const ft = container.querySelector("#filter-tipo-inv").value;
