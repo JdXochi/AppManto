@@ -59,12 +59,12 @@ export async function render(container, { session, perfil }) {
       </div>
 
       <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
-      <h2 style="margin-bottom:2px">Visto bueno</h2>
+      <h2 style="margin-bottom:2px">Conformidad del trabajo realizado</h2>
       <p class="sub">Quien confirma que el trabajo se realizó correctamente.</p>
 
       <div class="grid2">
         <div class="field">
-          <label for="f-vobo-nombre">Nombre de quien da el Vo.Bo.</label>
+          <label for="f-vobo-nombre">Nombre de quien confirma</label>
           <input type="text" id="f-vobo-nombre" placeholder="Se autocompleta con el encargado del equipo">
         </div>
         <div class="field">
@@ -208,7 +208,7 @@ export async function render(container, { session, perfil }) {
 
     if (!eq) { msg.style.color = "#B42318"; msg.textContent = "Selecciona un equipo del inventario."; return; }
     if (!fecha) { msg.style.color = "#B42318"; msg.textContent = "Selecciona la fecha."; return; }
-    if (!voboNombre) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el nombre de quien da el Vo.Bo."; return; }
+    if (!voboNombre) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el nombre de quien confirma el trabajo."; return; }
     if (tipoFirma === "Digital" && !hasSignature) {
       msg.style.color = "#B42318"; msg.textContent = "Falta capturar la firma digital (o cambia a firma física)."; return;
     }
@@ -241,13 +241,10 @@ export async function render(container, { session, perfil }) {
         firma_path: firmaPath,
       });
 
-      generarPDFConstancia(eq, { fecha, tecnico_nombre: perfil.nombre, actividades, hallazgos },
+      await generarPDFConstancia(eq, { fecha, tecnico_nombre: perfil.nombre, actividades, hallazgos },
         { nombre: voboNombre, puesto: voboPuesto, tipo_firma: tipoFirma, firmaDataUrl });
 
-      container.querySelector("#f-actividades").value = "";
-      container.querySelector("#f-hallazgos").value = "";
-      try { ctx2d.clearRect(0, 0, canvas.width, canvas.height); } catch (e) {}
-      hasSignature = false;
+      limpiarFormularioCompleto();
 
       msg.style.color = "#1E7B34"; msg.textContent = "Registro guardado y PDF generado.";
       setTimeout(() => msg.textContent = "", 3000);
@@ -258,4 +255,21 @@ export async function render(container, { session, perfil }) {
       btn.disabled = false; btn.textContent = "Guardar y generar PDF";
     }
   });
+
+  function limpiarFormularioCompleto() {
+    fGarita.value = "";
+    fTipo.value = "";
+    refreshSerieOptions(); // repuebla f-serie y limpia frecuencia + Vo.Bo. vía onSerieChange
+    container.querySelector("#f-fecha").value = hoyLocalISO();
+    container.querySelector("#f-actividades").value = "";
+    container.querySelector("#f-hallazgos").value = "";
+
+    const radioDigital = container.querySelector('input[name="tipofirma"][value="Digital"]');
+    radioDigital.checked = true;
+    container.querySelector("#wrap-firma-digital").style.display = "block";
+    container.querySelector("#wrap-firma-fisica").style.display = "none";
+
+    try { ctx2d.clearRect(0, 0, canvas.width, canvas.height); } catch (e) {}
+    hasSignature = false;
+  }
 }
