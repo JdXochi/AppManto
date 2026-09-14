@@ -5,7 +5,7 @@
 import { getEquipos } from "../equiposStore.js";
 import { addMantenimiento, addVistoBueno, subirFirma } from "../data.js";
 import { generarPDFConstancia } from "../pdf.js";
-import { GARITAS, fillSelect, tiposDisponibles } from "../shared.js";
+import { GARITAS, fillSelect, tiposDisponibles, hoyLocalISO } from "../shared.js";
 
 // Limpieza de listeners de window entre re-renders (evita fugas de memoria
 // si la persona entra y sale de esta pestaña varias veces).
@@ -110,7 +110,7 @@ export async function render(container, { session, perfil }) {
   const fVoboPuesto = container.querySelector("#f-vobo-puesto");
 
   container.querySelector("#f-tecnico").value = perfil ? perfil.nombre : "";
-  container.querySelector("#f-fecha").valueAsDate = new Date();
+  container.querySelector("#f-fecha").value = hoyLocalISO();
 
   fillSelect(fGarita, GARITAS, "Todas");
 
@@ -130,18 +130,16 @@ export async function render(container, { session, perfil }) {
     const g = fGarita.value, t = fTipo.value;
     const opciones = equiposCache.filter(e => (!g || e.garita === g) && (!t || e.tipo === t));
     fSerie.innerHTML = "";
-    if (!opciones.length) {
+    const oVacio = document.createElement("option");
+    oVacio.value = "";
+    oVacio.textContent = opciones.length ? "Selecciona un equipo..." : "— No hay equipos con ese filtro —";
+    fSerie.appendChild(oVacio);
+    opciones.forEach(e => {
       const o = document.createElement("option");
-      o.value = ""; o.textContent = "— No hay equipos con ese filtro —";
+      o.value = e.id;
+      o.textContent = `${e.serie} — ${e.tipo} (${e.garita})`;
       fSerie.appendChild(o);
-    } else {
-      opciones.forEach(e => {
-        const o = document.createElement("option");
-        o.value = e.id;
-        o.textContent = `${e.serie} — ${e.tipo} (${e.garita})`;
-        fSerie.appendChild(o);
-      });
-    }
+    });
     onSerieChange();
   }
   refreshSerieOptions();
