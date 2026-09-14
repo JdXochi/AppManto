@@ -29,6 +29,17 @@ export function normalizarTexto(s) {
   return (s || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
+// Fecha de HOY en formato yyyy-mm-dd, usando la hora LOCAL del dispositivo
+// (no UTC). Ojo: input.valueAsDate = new Date() se corre de día en Guatemala
+// por las tardes/noches, porque interpreta la fecha en UTC, no en local.
+export function hoyLocalISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Tipos de equipo presentes en una lista de equipos (para filtros).
 // El catálogo "oficial" de tipos vive en tiposEquipoStore.js.
 export function tiposDisponibles(equipos = []) {
