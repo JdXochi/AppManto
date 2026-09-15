@@ -11,7 +11,7 @@ import { GARITAS, fillSelect, tiposDisponibles, hoyLocalISO } from "../shared.js
 // si la persona entra y sale de esta pestaña varias veces).
 let cleanupPrevio = null;
 
-export async function render(container, { session, perfil }) {
+export async function render(container, { session, perfil, preseleccionarEquipoId }) {
   if (cleanupPrevio) { cleanupPrevio(); cleanupPrevio = null; }
 
   container.innerHTML = `
@@ -146,6 +146,19 @@ export async function render(container, { session, perfil }) {
   fGarita.addEventListener("change", refreshSerieOptions);
   fTipo.addEventListener("change", refreshSerieOptions);
   fSerie.addEventListener("change", onSerieChange);
+
+  // Si venimos desde "Estado" con un equipo específico (botón "Registrar"
+  // sobre un atrasado), lo preseleccionamos ya filtrado por su garita/tipo.
+  if (preseleccionarEquipoId) {
+    const eq = equiposCache.find(e => e.id === preseleccionarEquipoId);
+    if (eq) {
+      fGarita.value = eq.garita;
+      fTipo.value = eq.tipo;
+      refreshSerieOptions();
+      fSerie.value = eq.id;
+      onSerieChange();
+    }
+  }
 
   const radiosFirma = container.querySelectorAll('input[name="tipofirma"]');
   const wrapDigital = container.querySelector("#wrap-firma-digital");

@@ -6,24 +6,28 @@ import { listSeguimiento } from "../data.js";
 import { GARITAS, fillSelect, badgeClass } from "../shared.js";
 import { fmtDate } from "../pdf.js";
 
+// Orden de prioridad al mostrar la tabla: lo más urgente primero.
+const PRIORIDAD_ESTADO = { "Atrasado": 0, "Próximo": 1, "Sin registro": 2, "Vigente": 3 };
+
 export async function render(container) {
   container.innerHTML = `
     <div class="summary" id="summary-stats"></div>
     <div class="card">
       <h2>Estado por equipo</h2>
+      <p class="sub">Ordenado por urgencia: primero los atrasados, al final los que están al día.</p>
       <div class="filters">
         <select id="filter-garita-estado"><option value="">Todas las garitas</option></select>
         <select id="filter-status-estado">
           <option value="">Todos los estados</option>
-          <option value="Vigente">Vigente</option>
-          <option value="Próximo">Próximo</option>
           <option value="Atrasado">Atrasado</option>
+          <option value="Próximo">Próximo</option>
           <option value="Sin registro">Sin registro</option>
+          <option value="Vigente">Vigente</option>
         </select>
       </div>
       <div style="overflow-x:auto">
         <table id="tabla-estado" class="responsive-cards">
-          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie</th><th>Encargado</th><th>Última fecha</th><th>Próxima fecha</th><th>Estado</th></tr></thead>
+          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie</th><th>Encargado</th><th>Última fecha</th><th>Próxima fecha</th><th>Estado</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -51,13 +55,19 @@ export async function render(container) {
     tbody.innerHTML = "";
     seguimiento
       .filter(s => (!fg || s.garita === fg) && (!fs || s.estado === fs))
+      .sort((a, b) => (PRIORIDAD_ESTADO[a.estado] ?? 9) - (PRIORIDAD_ESTADO[b.estado] ?? 9))
       .forEach(s => {
         const tr = document.createElement("tr");
         tr.innerHTML = `<td data-label="Garita">${s.garita}</td><td data-label="Tipo">${s.tipo}</td><td data-label="Serie"><b>${s.serie}</b></td><td data-label="Encargado">${s.encargado_nombre||""}</td>
           <td data-label="Última fecha">${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td data-label="Próxima fecha">${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
-          <td data-label="Estado"><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>`;
+          <td data-label="Estado"><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>
+          <td data-label="Acciones"><button class="secondary btn-ir-registrar" data-equipo-id="${s.id}">Registrar</button></td>`;
         tbody.appendChild(tr);
       });
+
+    tbody.querySelectorAll(".btn-ir-registrar").forEach(btn => btn.addEventListener("click", () => {
+      if (window.irAVista) window.irAVista("registrar", { preseleccionarEquipoId: btn.dataset.equipoId });
+    }));
   }
 
   await renderTabla();
