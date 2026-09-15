@@ -276,7 +276,7 @@ menuToggle.addEventListener("click", toggleMenuMovil);
 navBackdrop.addEventListener("click", cerrarMenuMovil);
 
 // ---------------- Navegación: cada pestaña manda llamar a su propio módulo ----------------
-async function activarVista(view) {
+async function activarVista(view, extra) {
   document.querySelectorAll("#nav .tab").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
 
@@ -286,12 +286,16 @@ async function activarVista(view) {
   section.classList.add("active");
 
   try {
-    await PAGES[view].render(section, authCtx);
+    await PAGES[view].render(section, extra ? { ...authCtx, ...extra } : authCtx);
   } catch (err) {
     console.error(err);
     section.innerHTML = `<div class="card"><p style="color:#B42318">Ocurrió un error cargando esta sección: ${err.message}</p></div>`;
   }
 }
+
+// Permite que una página (ej. Estado) mande a otra (ej. Registrar) con datos
+// precargados -- ej. el botón "Registrar" de un equipo atrasado.
+window.irAVista = activarVista;
 
 document.querySelectorAll("#nav .tab").forEach(btn => {
   btn.addEventListener("click", () => {
