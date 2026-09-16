@@ -24,22 +24,48 @@ export async function getPerfilActual() {
   if (!session) return null;
   const { data, error } = await supabase
     .from("perfiles")
-    .select("nombre, username, rol")
+    .select("nombre, username, rol, activo, debe_cambiar_password")
     .eq("id", session.user.id)
     .single();
   if (error) { console.error(error); return null; }
   return data;
 }
 
-// Protege una página: si no hay sesión, redirige al login.
-// Uso: al inicio de cada página protegida, await requireSession();
-export async function requireSession() {
+// Protege una página: si no hay sesión, redirige al login. Además, a menos
+// que se pida lo contrario, obliga a pasar primero por el cambio de
+// contraseña si la cuenta lo requiere, y cierra la sesión si fue desactivada.
+export async function requireSession(opts = {}) {
   const session = await getSession();
   if (!session) {
     window.location.href = "index.html";
     return null;
   }
+  if (!opts.skipPasswordCheck) {
+    const { data } = await supabase
+      .from("perfiles")
+      .select("activo, debe_cambiar_password")
+      .eq("id", session.user.id)
+      .single();
+    if (data) {
+      if (!data.activo) {
+        await supabase.auth.signOut();
+        window.location.href = "index.html?desactivado=1";
+        return null;
+      }
+      if (data.debe_cambiar_password) {
+        window.location.href = "cambiar-password.html";
+        return null;
+      }
+    }
+  }
   return session;
+}
+
+// Marca la contraseña del usuario ACTUAL como ya actualizada (RPC acotado,
+// no permite editar rol/nombre/otros campos del perfil).
+export async function marcarPasswordCambiada() {
+  const { error } = await supabase.rpc("marcar_password_cambiada");
+  if (error) throw error;
 }
 
 export async function cerrarSesion() {
