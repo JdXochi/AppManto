@@ -148,3 +148,26 @@ export async function urlFirma(path) {
   if (error) { console.error(error); return null; }
   return data.signedUrl;
 }
+
+// ---------- Usuarios (perfiles) ----------
+
+export async function listPerfiles() {
+  const { data, error } = await supabase
+    .from("perfiles")
+    .select("id, username, nombre, rol, activo, debe_cambiar_password")
+    .order("username", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+// cambios puede incluir: nombre, rol, activo
+export async function updatePerfil(id, cambios) {
+  const { data, error } = await supabase
+    .from("perfiles")
+    .update(cambios)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
