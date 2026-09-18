@@ -193,6 +193,7 @@
   <button class="tab" data-view="historial" data-roles="admin,tecnico">Historial</button>
   <button class="tab" data-view="reportes" data-roles="admin,tecnico,usuario">Reportes</button>
   <button class="tab" data-view="catalogo" data-roles="admin">Catálogo de equipos</button>
+  <button class="tab" data-view="usuarios" data-roles="admin">Usuarios</button>
   <div class="nav-mobile-footer">
     <span class="who-mobile" id="who-mobile"></span>
     <a href="cambiar-password.html" class="logout-mobile" style="text-decoration:none; display:block; text-align:left;">Cambiar contraseña</a>
@@ -208,6 +209,7 @@
   <section id="historial" class="view"></section>
   <section id="reportes" class="view"></section>
   <section id="catalogo" class="view"></section>
+  <section id="usuarios" class="view"></section>
 </main>
 
 <footer>Xochi · Corredor de las Flores — Departamento de IT</footer>
@@ -220,6 +222,7 @@ import * as EstadoPage from "./js/pages/estado.js";
 import * as HistorialPage from "./js/pages/historial.js";
 import * as ReportesPage from "./js/pages/reportes.js";
 import * as CatalogoPage from "./js/pages/catalogo.js";
+import * as UsuariosPage from "./js/pages/usuarios.js";
 
 const PAGES = {
   registrar: RegistrarPage,
@@ -228,6 +231,7 @@ const PAGES = {
   historial: HistorialPage,
   reportes: ReportesPage,
   catalogo: CatalogoPage,
+  usuarios: UsuariosPage,
 };
 
 // ---------------- Auth / perfil ----------------
