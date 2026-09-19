@@ -3,6 +3,7 @@
 // Capa de acceso a datos (Supabase)
 // =========================================================
 import { supabase } from "./supabaseClient.js";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
 // ---------- Tipos de equipo (catálogo) ----------
 
@@ -170,4 +171,27 @@ export async function updatePerfil(id, cambios) {
     .single();
   if (error) throw error;
   return data;
+}
+
+// Crea un usuario nuevo (cuenta de acceso + fila en "perfiles") a través de
+// la Edge Function "crear-usuario" -- es la única operación que de verdad
+// necesita privilegios de administrador de Supabase, por eso no se hace
+// directo desde aquí.
+export async function crearUsuario({ username, nombre, rol, password }) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Sesión no encontrada.");
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+      "apikey": SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ username, nombre, rol, password }),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Error (${res.status})`);
+  return body;
 }
