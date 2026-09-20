@@ -6,7 +6,7 @@ import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
 import { addTipoEquipo, updateTipoEquipo } from "../data.js";
 import { invalidateEquipos } from "../equiposStore.js";
 
-export async function render(container) {
+export async function render(container, {ROL} ) {
   container.innerHTML = `
     <div class="card">
       <h2>Agregar tipo de equipo</h2>
@@ -38,6 +38,7 @@ export async function render(container) {
       </div>
     </div>
   `;
+  if (ROL === "admin") {
   container.querySelector("#btn-agregar-tipo").addEventListener("click", async () => {
     const msg = container.querySelector("#tipo-msg");
     const descripcion = container.querySelector("#t-descripcion").value.trim();
@@ -59,6 +60,7 @@ export async function render(container) {
       msg.textContent = err.message.includes("duplicate") ? "Ya existe un tipo con esa descripción." : ("Error: " + err.message);
     }
   });
+}
 
   async function renderTabla() {
     const tipos = await getTiposEquipo(true);
