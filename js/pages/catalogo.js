@@ -38,7 +38,8 @@ export async function render(container, {ROL} ) {
       </div>
     </div>
   `;
-  if (ROL === "admin") {
+  
+
   container.querySelector("#btn-agregar-tipo").addEventListener("click", async () => {
     const msg = container.querySelector("#tipo-msg");
     const descripcion = container.querySelector("#t-descripcion").value.trim();
@@ -60,7 +61,7 @@ export async function render(container, {ROL} ) {
       msg.textContent = err.message.includes("duplicate") ? "Ya existe un tipo con esa descripción." : ("Error: " + err.message);
     }
   });
-}
+
 
   async function renderTabla() {
     const tipos = await getTiposEquipo(true);
