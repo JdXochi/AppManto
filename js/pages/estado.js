@@ -9,7 +9,7 @@ import { fmtDate } from "../pdf.js";
 // Orden de prioridad al mostrar la tabla: lo más urgente primero.
 const PRIORIDAD_ESTADO = { "Atrasado": 0, "Próximo": 1, "Sin registro": 2, "Vigente": 3 };
 
-export async function render(container)  { ROL } {
+export async function render(container, { ROL })   {
   container.innerHTML = `
     <div class="summary" id="summary-stats"></div>
     <div class="card">
