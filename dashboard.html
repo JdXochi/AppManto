@@ -173,7 +173,7 @@
 <header>
   <div class="header-left">
     <div class="logo-chip"><img src="xochi-logo.png" alt="Xochi"></div>
-    <h1>Control de Mantenimiento IT <span class="role-pill" id="role-pill">…</span></h1>
+    <h1>Control de Mantenimiento de Equipos IT <span class="role-pill" id="role-pill">…</span></h1>
   </div>
   <div class="header-right">
     <span class="who" id="who">Cargando...</span>
@@ -243,8 +243,8 @@ if (!perfil) {
   document.getElementById("who").textContent = "Perfil no encontrado — contacta al Administrador.";
   document.getElementById("who-mobile").textContent = "Perfil no encontrado";
 } else {
-  document.getElementById("who").textContent = `${perfil.nombre} (@${perfil.username || "—"})`;
-  document.getElementById("who-mobile").textContent = `${perfil.nombre} (@${perfil.username || "—"})`;
+  document.getElementById("who").textContent = `${perfil.nombre} `;
+  document.getElementById("who-mobile").textContent = `${perfil.nombre} `;
   document.getElementById("role-pill").textContent = perfil.rol;
 }
 document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
