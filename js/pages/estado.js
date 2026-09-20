@@ -61,7 +61,7 @@ export async function render(container) {
         tr.innerHTML = `<td data-label="Garita">${s.garita}</td><td data-label="Tipo">${s.tipo}</td><td data-label="Serie"><b>${s.serie}</b></td><td data-label="Encargado">${s.encargado_nombre||""}</td>
           <td data-label="Última fecha">${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td data-label="Próxima fecha">${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
           <td data-label="Estado"><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>
-          <td data-label="Acciones">${ROL === "admin" ? `<button class="secondary btn-ir-registrar" data-equipo-id="${r.id}">Registrar</button>` : ""}</td>`;
+          <td data-label="Acciones"><button class="secondary btn-ir-registrar" data-equipo-id="${s.id}">Registrar</button></td>`;
         tbody.appendChild(tr);
       });
 
