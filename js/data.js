@@ -43,7 +43,7 @@ export async function listEquipos() {
   const { data, error } = await supabase
     .from("equipos")
     .select(`
-      id, garita, serie, modelo, marca, encargado_nombre, encargado_puesto, tipo_id,
+      id, garita, serie, modelo, marca, ip, encargado_nombre, encargado_puesto, tipo_id,
       tipos_equipo ( descripcion, frecuencia_meses )
     `)
     .eq("activo", true)
