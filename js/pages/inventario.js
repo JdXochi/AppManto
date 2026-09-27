@@ -87,7 +87,7 @@ export async function render(container, { ROL }) {
     </div>
   `;
 
-  if (ROL === "admin") {
+  if (ROL === "admin" || ROL === "tecnico") {
     container.querySelector("#card-agregar-equipo").style.display = "block";
 
     const iGarita = container.querySelector("#i-garita");
