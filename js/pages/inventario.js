@@ -94,6 +94,7 @@ export async function render(container, { ROL }) {
     const iSerie = container.querySelector("#i-serie");
     const iMarca = container.querySelector("#i-marca");
     const iModelo = container.querySelector("#i-modelo");
+    const iIp = container.querySelector("#i-ip");
     const iEncargado = container.querySelector("#i-encargado");
     const iPuesto = container.querySelector("#i-puesto");
 
@@ -129,6 +130,7 @@ export async function render(container, { ROL }) {
       iSerie.value = "";
       iMarca.value = "";
       iModelo.value = "";
+      iIp.value = "";
       iEncargado.value = "";
       iPuesto.value = "";
     }
@@ -139,6 +141,7 @@ export async function render(container, { ROL }) {
       const serie = iSerie.value.trim();
       const marca = iMarca.value.trim();
       const modelo = iModelo.value.trim();
+      const ip = iIp.value.trim();
       const encargado_nombre = iEncargado.value.trim();
       const encargado_puesto = iPuesto.value.trim();
 
@@ -158,7 +161,7 @@ export async function render(container, { ROL }) {
           invalidateTiposEquipo();
         }
 
-        await addEquipo({ garita, tipo_id, serie, marca, modelo, encargado_nombre, encargado_puesto });
+        await addEquipo({ garita, tipo_id, serie, marca, modelo, ip, encargado_nombre, encargado_puesto });
         limpiarFormulario();
         await refreshTipoSelect();
         msg.style.color = "#1E7B34"; msg.textContent = "Equipo agregado.";
