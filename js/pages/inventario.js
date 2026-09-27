@@ -4,7 +4,7 @@
 // =========================================================
 import { getEquipos, invalidateEquipos } from "../equiposStore.js";
 import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
-import { addEquipo, addTipoEquipo } from "../data.js";
+import { addEquipo, addTipoEquipo, updateEquipo } from "../data.js";
 import { GARITAS, fillSelect, tiposDisponibles, normalizarTexto } from "../shared.js";
 
 const NUEVO_TIPO = "__nuevo__";
@@ -49,6 +49,10 @@ export async function render(container, { ROL }) {
           <label for="i-modelo">Modelo</label>
           <input type="text" id="i-modelo" placeholder="Ej. Latitude 5420">
         </div>
+        <div class="field">
+          <label for="i-ip">Dirección IP</label>
+          <input type="text" id="i-ip" placeholder="Ej. 192.168.1.20">
+        </div>
       </div>
       <div class="grid2">
         <div class="field">
@@ -75,7 +79,7 @@ export async function render(container, { ROL }) {
       </div>
       <div style="overflow-x:auto">
         <table id="tabla-inventario" class="responsive-cards">
-          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie / Código</th><th>Marca</th><th>Modelo</th><th>Encargado</th><th>Puesto</th></tr></thead>
+          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie / Código</th><th>Marca</th><th>Modelo</th><th>IP</th><th>Encargado</th><th>Puesto</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -83,7 +87,7 @@ export async function render(container, { ROL }) {
     </div>
   `;
 
-  if (ROL === "admin" || ROL === "tecnico") {
+  if (ROL === "admin") {
     container.querySelector("#card-agregar-equipo").style.display = "block";
 
     const iGarita = container.querySelector("#i-garita");
@@ -205,7 +209,7 @@ export async function render(container, { ROL }) {
       if (fg && e.garita !== fg) return false;
       if (ft && e.tipo !== ft) return false;
       if (q) {
-        const texto = normalizarTexto([e.tipo, e.serie, e.marca, e.modelo, e.encargado_nombre, e.encargado_puesto]
+        const texto = normalizarTexto([e.tipo, e.serie, e.marca, e.modelo, e.ip, e.encargado_nombre, e.encargado_puesto]
           .filter(Boolean).join(" "));
         if (!texto.includes(q)) return false;
       }
@@ -219,7 +223,103 @@ export async function render(container, { ROL }) {
     tbody.innerHTML = "";
     filtrados.forEach(e => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td data-label="Garita">${e.garita}</td><td data-label="Tipo">${e.tipo}</td><td data-label="Serie / Código"><b>${e.serie}</b></td><td data-label="Marca">${e.marca||""}</td><td data-label="Modelo">${e.modelo||""}</td><td data-label="Encargado">${e.encargado_nombre||""}</td><td data-label="Puesto">${e.encargado_puesto||""}</td>`;
+      tr.innerHTML = `
+        <td data-label="Garita">
+          <span class="valor-garita">${e.garita}</span>
+          <select class="edit-garita" style="display:none"></select>
+        </td>
+        <td data-label="Tipo">${e.tipo}</td>
+        <td data-label="Serie / Código">
+          <span class="valor-serie"><b>${e.serie}</b></span>
+          <input type="text" class="edit-serie" value="${e.serie}" style="display:none">
+        </td>
+        <td data-label="Marca">
+          <span class="valor-marca">${e.marca||""}</span>
+          <input type="text" class="edit-marca" value="${e.marca||""}" style="display:none">
+        </td>
+        <td data-label="Modelo">
+          <span class="valor-modelo">${e.modelo||""}</span>
+          <input type="text" class="edit-modelo" value="${e.modelo||""}" style="display:none">
+        </td>
+        <td data-label="IP">
+          <span class="valor-ip">${e.ip||""}</span>
+          <input type="text" class="edit-ip" value="${e.ip||""}" style="display:none">
+        </td>
+        <td data-label="Encargado">
+          <span class="valor-encargado">${e.encargado_nombre||""}</span>
+          <input type="text" class="edit-encargado" value="${e.encargado_nombre||""}" style="display:none">
+        </td>
+        <td data-label="Puesto">
+          <span class="valor-puesto">${e.encargado_puesto||""}</span>
+          <input type="text" class="edit-puesto" value="${e.encargado_puesto||""}" style="display:none">
+        </td>
+        <td data-label="Acciones">
+          ${ROL === "admin" ? `
+            <button class="secondary btn-editar">Editar</button>
+            <button class="primary btn-guardar" style="display:none">Guardar</button>
+            <button class="ghost btn-cancelar" style="display:none">Cancelar</button>
+          ` : ""}
+        </td>`;
+
+      if (ROL === "admin") {
+        const editGarita = tr.querySelector(".edit-garita");
+        fillSelect(editGarita, GARITAS, null);
+        editGarita.value = e.garita;
+
+        const campos = ["garita", "serie", "marca", "modelo", "ip", "encargado", "puesto"];
+        const valores = {};
+        const edits = {};
+        campos.forEach(c => {
+          valores[c] = tr.querySelector(`.valor-${c}`);
+          edits[c] = tr.querySelector(`.edit-${c}`);
+        });
+
+        const btnEditar = tr.querySelector(".btn-editar");
+        const btnGuardar = tr.querySelector(".btn-guardar");
+        const btnCancelar = tr.querySelector(".btn-cancelar");
+
+        function modoEdicion(activo) {
+          campos.forEach(c => {
+            valores[c].style.display = activo ? "none" : "";
+            edits[c].style.display = activo ? "" : "none";
+          });
+          btnEditar.style.display = activo ? "none" : "";
+          btnGuardar.style.display = activo ? "" : "none";
+          btnCancelar.style.display = activo ? "" : "none";
+        }
+
+        btnEditar.addEventListener("click", () => modoEdicion(true));
+        btnCancelar.addEventListener("click", () => {
+          editGarita.value = e.garita;
+          edits.serie.value = e.serie;
+          edits.marca.value = e.marca || "";
+          edits.modelo.value = e.modelo || "";
+          edits.ip.value = e.ip || "";
+          edits.encargado.value = e.encargado_nombre || "";
+          edits.puesto.value = e.encargado_puesto || "";
+          modoEdicion(false);
+        });
+        btnGuardar.addEventListener("click", async () => {
+          const nuevaSerie = edits.serie.value.trim();
+          if (!nuevaSerie) { alert("La serie/código no puede quedar vacía."); return; }
+          try {
+            await updateEquipo(e.id, {
+              garita: editGarita.value,
+              serie: nuevaSerie,
+              marca: edits.marca.value.trim(),
+              modelo: edits.modelo.value.trim(),
+              ip: edits.ip.value.trim(),
+              encargado_nombre: edits.encargado.value.trim(),
+              encargado_puesto: edits.puesto.value.trim(),
+            });
+            invalidateEquipos();
+            await renderTabla();
+          } catch (err) {
+            alert(err.message.includes("duplicate") ? "Ya existe otro equipo con esa serie." : ("No se pudo guardar: " + err.message));
+          }
+        });
+      }
+
       tbody.appendChild(tr);
     });
   }
