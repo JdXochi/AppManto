@@ -4,7 +4,7 @@
 // =========================================================
 import { getEquipos, invalidateEquipos } from "../equiposStore.js";
 import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
-import { addEquipo, addTipoEquipo} from "../data.js";
+import { addEquipo, addTipoEquipo, updateEquipo} from "../data.js";
 import { GARITAS, fillSelect, tiposDisponibles, normalizarTexto } from "../shared.js";
 
 const NUEVO_TIPO = "__nuevo__";
