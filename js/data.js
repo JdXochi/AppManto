@@ -66,6 +66,18 @@ export async function addEquipo(equipo) {
   return data;
 }
 
+// cambios puede incluir: garita, serie, marca, modelo, ip, encargado_nombre, encargado_puesto
+export async function updateEquipo(id, cambios) {
+  const { data, error } = await supabase
+    .from("equipos")
+    .update(cambios)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // ---------- Seguimiento (estado por equipo, vista calculada) ----------
 
 export async function listSeguimiento() {
