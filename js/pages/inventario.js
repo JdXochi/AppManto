@@ -261,7 +261,7 @@ export async function render(container, { ROL }) {
           ` : ""}
         </td>`;
 
-      if (ROL === "admin") {
+      if (ROL === "admin" || ROL === "tecnico") {
         const editGarita = tr.querySelector(".edit-garita");
         fillSelect(editGarita, GARITAS, null);
         editGarita.value = e.garita;
