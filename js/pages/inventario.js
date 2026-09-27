@@ -254,7 +254,7 @@ export async function render(container, { ROL }) {
           <input type="text" class="edit-puesto" value="${e.encargado_puesto||""}" style="display:none">
         </td>
         <td data-label="Acciones">
-          ${ROL === "admin" ? `
+          ${(ROL === "admin" || ROL === "tecnico")? `
             <button class="secondary btn-editar">Editar</button>
             <button class="primary btn-guardar" style="display:none">Guardar</button>
             <button class="ghost btn-cancelar" style="display:none">Cancelar</button>
