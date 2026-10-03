@@ -4,10 +4,12 @@
 // =========================================================
 import { getEquipos, invalidateEquipos } from "../equiposStore.js";
 import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
-import { addEquipo, addTipoEquipo, updateEquipo} from "../data.js";
-import { GARITAS, fillSelect, tiposDisponibles, normalizarTexto } from "../shared.js";
+import { getEncargados, invalidateEncargados } from "../encargadosStore.js";
+import { addEquipo, addTipoEquipo, updateEquipo, addEncargado } from "../data.js";
+import { GARITAS, fillSelect, fillSelectPairs, tiposDisponibles, normalizarTexto, esc, formatearNombre, buscarEncargadosParecidos } from "../shared.js";
 
 const NUEVO_TIPO = "__nuevo__";
+const NUEVO_ENCARGADO = "__nuevo_encargado__";
 
 export async function render(container, { ROL }) {
   container.innerHTML = `
@@ -56,12 +58,23 @@ export async function render(container, { ROL }) {
       </div>
       <div class="grid2">
         <div class="field">
-          <label for="i-encargado">Nombre del encargado</label>
-          <input type="text" id="i-encargado" placeholder="Nombre y apellido">
+          <label for="i-encargado">Encargado</label>
+          <select id="i-encargado"></select>
+          <p class="hint">Elige de la lista para no repetir nombres. Si no está, usa "+ Nuevo encargado".</p>
         </div>
         <div class="field">
           <label for="i-puesto">Puesto del encargado</label>
-          <input type="text" id="i-puesto" placeholder="Puesto">
+          <input type="text" id="i-puesto" disabled placeholder="Se llena al elegir al encargado">
+        </div>
+      </div>
+      <div class="grid2" id="wrap-nuevo-encargado" style="display:none">
+        <div class="field">
+          <label for="i-enc-nuevo-nombre">Nombre completo del encargado nuevo</label>
+          <input type="text" id="i-enc-nuevo-nombre" placeholder="Nombre y apellido">
+        </div>
+        <div class="field">
+          <label for="i-enc-nuevo-puesto">Puesto</label>
+          <input type="text" id="i-enc-nuevo-puesto" placeholder="Puesto">
         </div>
       </div>
       <div class="btnrow">
@@ -101,6 +114,55 @@ export async function render(container, { ROL }) {
     const iIp = container.querySelector("#i-ip");
     const iEncargado = container.querySelector("#i-encargado");
     const iPuesto = container.querySelector("#i-puesto");
+    const wrapNuevoEncargado = container.querySelector("#wrap-nuevo-encargado");
+    const iEncNuevoNombre = container.querySelector("#i-enc-nuevo-nombre");
+    const iEncNuevoPuesto = container.querySelector("#i-enc-nuevo-puesto");
+
+    let encargadosActivos = [];
+
+    // Muestra el puesto del encargado elegido y abre/cierra los campos de "nuevo".
+    function actualizarVistaEncargado() {
+      wrapNuevoEncargado.style.display = iEncargado.value === NUEVO_ENCARGADO ? "grid" : "none";
+      const enc = encargadosActivos.find(x => x.id === iEncargado.value);
+      iPuesto.value = enc ? (enc.puesto || "") : "";
+    }
+
+    async function refreshEncargadoSelect() {
+      encargadosActivos = (await getEncargados()).filter(x => x.activo);
+      fillSelectPairs(iEncargado, encargadosActivos.map(x => ({ value: x.id, label: x.nombre })), "Sin encargado");
+      const oNuevo = document.createElement("option");
+      oNuevo.value = NUEVO_ENCARGADO; oNuevo.textContent = "+ Nuevo encargado...";
+      iEncargado.appendChild(oNuevo);
+      actualizarVistaEncargado();
+    }
+    await refreshEncargadoSelect();
+    iEncargado.addEventListener("change", actualizarVistaEncargado);
+
+    // Crea al encargado nuevo evitando duplicados ("Jose Diaz" vs "jose diaz").
+    // Devuelve su id, o null si el usuario canceló / hubo un problema.
+    async function crearEncargadoDesdeFormulario(msg) {
+      const nombre = formatearNombre(iEncNuevoNombre.value);
+      const puesto = iEncNuevoPuesto.value.trim();
+      if (!nombre) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el nombre del encargado nuevo."; return null; }
+
+      const todos = await getEncargados(true);
+      const { exactos, parecidos } = buscarEncargadosParecidos(nombre, todos);
+      if (exactos.length) {
+        msg.style.color = "#B42318";
+        msg.textContent = exactos[0].activo
+          ? `"${exactos[0].nombre}" ya existe: selecciónalo en la lista.`
+          : `"${exactos[0].nombre}" ya existe pero está inactivo: pide al Administrador que lo reactive.`;
+        return null;
+      }
+      if (parecidos.length && !confirm(
+        `Ya existe un encargado parecido: ${parecidos.map(x => x.nombre).join(", ")}.\n\n` +
+        `Si es la misma persona, cancela y selecciónala en la lista.\n` +
+        `¿Crear de todos modos como una persona distinta?`)) return null;
+
+      const nuevo = await addEncargado({ nombre, puesto: puesto || null });
+      invalidateEncargados();
+      return nuevo.id;
+    }
 
     fillSelect(iGarita, GARITAS, null);
 
@@ -136,7 +198,9 @@ export async function render(container, { ROL }) {
       iModelo.value = "";
       iIp.value = "";
       iEncargado.value = "";
-      iPuesto.value = "";
+      iEncNuevoNombre.value = "";
+      iEncNuevoPuesto.value = "";
+      actualizarVistaEncargado();
     }
 
     container.querySelector("#btn-agregar-inv").addEventListener("click", async () => {
@@ -146,8 +210,7 @@ export async function render(container, { ROL }) {
       const marca = iMarca.value.trim();
       const modelo = iModelo.value.trim();
       const ip = iIp.value.trim();
-      const encargado_nombre = iEncargado.value.trim();
-      const encargado_puesto = iPuesto.value.trim();
+      let encargado_id = iEncargado.value || null;
 
       if (!serie) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la serie/código del equipo."; return; }
 
@@ -165,9 +228,15 @@ export async function render(container, { ROL }) {
           invalidateTiposEquipo();
         }
 
-        await addEquipo({ garita, tipo_id, serie, marca, modelo, ip, encargado_nombre, encargado_puesto });
+        if (encargado_id === NUEVO_ENCARGADO) {
+          encargado_id = await crearEncargadoDesdeFormulario(msg);
+          if (!encargado_id) return;
+        }
+
+        await addEquipo({ garita, tipo_id, serie, marca, modelo, ip, encargado_id });
         limpiarFormulario();
         await refreshTipoSelect();
+        await refreshEncargadoSelect();
         msg.style.color = "#1E7B34"; msg.textContent = "Equipo agregado.";
         setTimeout(() => msg.textContent = "", 2500);
         invalidateEquipos();
@@ -201,6 +270,7 @@ export async function render(container, { ROL }) {
 
   async function renderTabla() {
     const equipos = await getEquipos();
+    const encargadosLista = await getEncargados();
     const fg = container.querySelector("#filter-garita-inv").value;
     const ft = container.querySelector("#filter-tipo-inv").value;
     const q = normalizarTexto(container.querySelector("#filter-busqueda-inv").value.trim());
@@ -246,13 +316,10 @@ export async function render(container, { ROL }) {
           <input type="text" class="edit-ip" value="${e.ip||""}" style="display:none">
         </td>
         <td data-label="Encargado">
-          <span class="valor-encargado">${e.encargado_nombre||""}</span>
-          <input type="text" class="edit-encargado" value="${e.encargado_nombre||""}" style="display:none">
+          <span class="valor-encargado">${esc(e.encargado_nombre)}</span>
+          <select class="edit-encargado" style="display:none"></select>
         </td>
-        <td data-label="Puesto">
-          <span class="valor-puesto">${e.encargado_puesto||""}</span>
-          <input type="text" class="edit-puesto" value="${e.encargado_puesto||""}" style="display:none">
-        </td>
+        <td data-label="Puesto">${esc(e.encargado_puesto)}</td>
         <td data-label="Acciones">
           ${(ROL === "admin" || ROL === "tecnico")? `
             <button class="secondary btn-editar">Editar</button>
@@ -266,7 +333,16 @@ export async function render(container, { ROL }) {
         fillSelect(editGarita, GARITAS, null);
         editGarita.value = e.garita;
 
-        const campos = ["garita", "serie", "marca", "modelo", "ip", "encargado", "puesto"];
+        // Solo encargados activos (más el actual, aunque esté inactivo).
+        const editEncargado = tr.querySelector(".edit-encargado");
+        fillSelectPairs(
+          editEncargado,
+          encargadosLista.filter(x => x.activo || x.id === e.encargado_id).map(x => ({ value: x.id, label: x.nombre })),
+          "Sin encargado"
+        );
+        editEncargado.value = e.encargado_id || "";
+
+        const campos = ["garita", "serie", "marca", "modelo", "ip", "encargado"];
         const valores = {};
         const edits = {};
         campos.forEach(c => {
@@ -295,8 +371,7 @@ export async function render(container, { ROL }) {
           edits.marca.value = e.marca || "";
           edits.modelo.value = e.modelo || "";
           edits.ip.value = e.ip || "";
-          edits.encargado.value = e.encargado_nombre || "";
-          edits.puesto.value = e.encargado_puesto || "";
+          edits.encargado.value = e.encargado_id || "";
           modoEdicion(false);
         });
         btnGuardar.addEventListener("click", async () => {
@@ -309,8 +384,7 @@ export async function render(container, { ROL }) {
               marca: edits.marca.value.trim(),
               modelo: edits.modelo.value.trim(),
               ip: edits.ip.value.trim(),
-              encargado_nombre: edits.encargado.value.trim(),
-              encargado_puesto: edits.puesto.value.trim(),
+              encargado_id: edits.encargado.value || null,
             });
             invalidateEquipos();
             await renderTabla();
