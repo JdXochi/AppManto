@@ -191,8 +191,10 @@
   <button class="tab" data-view="inventario" data-roles="admin,tecnico,usuario">Inventario</button>
   <button class="tab" data-view="estado" data-roles="admin,tecnico,usuario">Estado de equipos</button>
   <button class="tab" data-view="historial" data-roles="admin,tecnico,usuario">Historial</button>
+  <button class="tab" data-view="hardware" data-roles="admin,tecnico">Cambios de hardware</button>
   <button class="tab" data-view="reportes" data-roles="admin,tecnico,usuario">Reportes</button>
   <button class="tab" data-view="catalogo" data-roles="admin">Catálogo de equipos</button>
+  <button class="tab" data-view="encargados" data-roles="admin">Encargados</button>
   <button class="tab" data-view="usuarios" data-roles="admin">Usuarios</button>
   <div class="nav-mobile-footer">
     <span class="who-mobile" id="who-mobile"></span>
@@ -207,8 +209,10 @@
   <section id="inventario" class="view"></section>
   <section id="estado" class="view"></section>
   <section id="historial" class="view"></section>
+  <section id="hardware" class="view"></section>
   <section id="reportes" class="view"></section>
   <section id="catalogo" class="view"></section>
+  <section id="encargados" class="view"></section>
   <section id="usuarios" class="view"></section>
 </main>
 
@@ -220,8 +224,10 @@ import * as RegistrarPage from "./js/pages/registrar.js";
 import * as InventarioPage from "./js/pages/inventario.js";
 import * as EstadoPage from "./js/pages/estado.js";
 import * as HistorialPage from "./js/pages/historial.js";
+import * as HardwarePage from "./js/pages/hardware.js";
 import * as ReportesPage from "./js/pages/reportes.js";
 import * as CatalogoPage from "./js/pages/catalogo.js";
+import * as EncargadosPage from "./js/pages/encargados.js";
 import * as UsuariosPage from "./js/pages/usuarios.js";
 
 const PAGES = {
@@ -229,8 +235,10 @@ const PAGES = {
   inventario: InventarioPage,
   estado: EstadoPage,
   historial: HistorialPage,
+  hardware: HardwarePage,
   reportes: ReportesPage,
   catalogo: CatalogoPage,
+  encargados: EncargadosPage,
   usuarios: UsuariosPage,
 };
 
