@@ -43,7 +43,7 @@ export async function listEquipos() {
   const { data, error } = await supabase
     .from("equipos")
     .select(`
-      id, garita, serie, modelo, marca, ip, encargado_nombre, encargado_puesto, tipo_id,
+      id, garita, serie, modelo, marca, ip, encargado_nombre, encargado_puesto, encargado_id, tipo_id,
       tipos_equipo ( descripcion, frecuencia_meses )
     `)
     .eq("activo", true)
@@ -66,7 +66,7 @@ export async function addEquipo(equipo) {
   return data;
 }
 
-// cambios puede incluir: garita, serie, marca, modelo, ip, encargado_nombre, encargado_puesto
+// cambios puede incluir: garita, serie, marca, modelo, ip, encargado_id
 export async function updateEquipo(id, cambios) {
   const { data, error } = await supabase
     .from("equipos")
@@ -206,4 +206,101 @@ export async function crearUsuario({ username, nombre, rol, password }) {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Error (${res.status})`);
   return body;
+}
+
+// ---------- Encargados (personas responsables de los equipos) ----------
+
+export async function listEncargados() {
+  const { data, error } = await supabase
+    .from("encargados")
+    .select("id, nombre, puesto, activo")
+    .order("nombre", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function addEncargado(encargado) {
+  const { data, error } = await supabase
+    .from("encargados")
+    .insert(encargado)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// cambios puede incluir: nombre, puesto, activo
+export async function updateEncargado(id, cambios) {
+  const { data, error } = await supabase
+    .from("encargados")
+    .update(cambios)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Pasa todos los equipos de "origen" a "destino" y elimina "origen" (solo admin).
+export async function fusionarEncargados(origen, destino) {
+  const { error } = await supabase.rpc("fusionar_encargados", { origen, destino });
+  if (error) throw error;
+}
+
+// ---------- Cambios de hardware ----------
+
+export async function listCategoriasHardware() {
+  const { data, error } = await supabase
+    .from("categorias_hardware")
+    .select("id, descripcion")
+    .order("descripcion", { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function addCategoriaHardware(descripcion) {
+  const { data, error } = await supabase
+    .from("categorias_hardware")
+    .insert({ descripcion })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function listCambiosHardware() {
+  const { data, error } = await supabase
+    .from("cambios_hardware")
+    .select(`
+      id, fecha, accion, descripcion, costo, tecnico_nombre, created_at,
+      categorias_hardware ( descripcion ),
+      equipos ( garita, serie, tipos_equipo ( descripcion ) )
+    `)
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data.map(r => ({
+    ...r,
+    categoria: r.categorias_hardware?.descripcion || "",
+    equipo: r.equipos ? {
+      garita: r.equipos.garita,
+      serie: r.equipos.serie,
+      tipo: r.equipos.tipos_equipo?.descripcion || "",
+    } : null,
+  }));
+}
+
+export async function addCambioHardware(registro) {
+  const { data, error } = await supabase
+    .from("cambios_hardware")
+    .insert(registro)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCambioHardware(id) {
+  const { error } = await supabase.from("cambios_hardware").delete().eq("id", id);
+  if (error) throw error;
 }
