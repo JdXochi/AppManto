@@ -260,7 +260,9 @@ if (!perfil) {
 document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
 document.getElementById("btn-logout-mobile").addEventListener("click", cerrarSesion);
 
-const ROL = perfil ? perfil.rol : "usuario";
+if (session) iniciarTemporizadorInactividad(cerrarSesion, 10);
+
+  const ROL = perfil ? perfil.rol : "usuario";
 const authCtx = { ROL, perfil, session };
 
 // Muestra solo las pestañas permitidas para este rol
