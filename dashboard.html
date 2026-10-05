@@ -220,6 +220,7 @@
 
 <script type="module">
 import { requireSession, getPerfilActual, cerrarSesion } from "./js/supabaseClient.js";
+import { iniciarTemporizadorInactividad } from "./js/inactividad.js";
 import * as RegistrarPage from "./js/pages/registrar.js";
 import * as InventarioPage from "./js/pages/inventario.js";
 import * as EstadoPage from "./js/pages/estado.js";
@@ -229,6 +230,7 @@ import * as ReportesPage from "./js/pages/reportes.js";
 import * as CatalogoPage from "./js/pages/catalogo.js";
 import * as EncargadosPage from "./js/pages/encargados.js";
 import * as UsuariosPage from "./js/pages/usuarios.js";
+
 
 const PAGES = {
   registrar: RegistrarPage,
