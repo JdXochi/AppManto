@@ -43,7 +43,7 @@ export async function listEquipos() {
   const { data, error } = await supabase
     .from("equipos")
     .select(`
-      id, garita, serie, modelo, marca, ip, encargado_nombre, encargado_puesto, encargado_id, tipo_id,
+      id, garita, ubicacion, serie, modelo, marca, ip, encargado_nombre, encargado_puesto, encargado_id, tipo_id,
       tipos_equipo ( descripcion, frecuencia_meses )
     `)
     .eq("activo", true)
@@ -66,7 +66,7 @@ export async function addEquipo(equipo) {
   return data;
 }
 
-// cambios puede incluir: garita, serie, marca, modelo, ip, encargado_id
+// cambios puede incluir: garita, ubicacion, serie, marca, modelo, ip, encargado_id
 export async function updateEquipo(id, cambios) {
   const { data, error } = await supabase
     .from("equipos")
