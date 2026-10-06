@@ -11,6 +11,16 @@ import { GARITAS, fillSelect, fillSelectPairs, tiposDisponibles, normalizarTexto
 const NUEVO_TIPO = "__nuevo__";
 const NUEVO_ENCARGADO = "__nuevo_encargado__";
 
+// Limpia la ubicación (espacios) y, si ya existe una igual escrita distinto
+// ("oficina supervisores" vs "Oficina Supervisores"), usa la ya registrada.
+function ubicacionCanonica(texto, equipos) {
+  const limpio = (texto || "").trim().replace(/\s+/g, " ");
+  if (!limpio) return null;
+  const clave = normalizarTexto(limpio);
+  const existente = equipos.find(e => e.ubicacion && normalizarTexto(e.ubicacion) === clave);
+  return existente ? existente.ubicacion : limpio;
+}
+
 export async function render(container, { ROL }) {
   container.innerHTML = `
     <div class="card" id="card-agregar-equipo" style="display:none">
@@ -56,6 +66,12 @@ export async function render(container, { ROL }) {
           <input type="text" id="i-ip" placeholder="Ej. 192.168.1.20">
         </div>
       </div>
+      <div class="field">
+        <label for="i-ubicacion">Ubicación</label>
+        <input type="text" id="i-ubicacion" list="dl-ubicaciones" autocomplete="off" placeholder="Ej. Oficina supervisores">
+        <datalist id="dl-ubicaciones"></datalist>
+        <p class="hint">Dónde está el equipo dentro de la garita. Si ya existe, aparece en la lista para no escribirla distinto.</p>
+      </div>
       <div class="grid2">
         <div class="field">
           <label for="i-encargado">Encargado</label>
@@ -86,13 +102,13 @@ export async function render(container, { ROL }) {
     <div class="card">
       <h2>Equipos registrados <span class="hint" id="inv-count"></span></h2>
       <div class="filters">
-        <input type="text" id="filter-busqueda-inv" placeholder="Buscar por tipo, serie, marca, modelo o encargado..." style="flex:1; min-width:220px;">
+        <input type="text" id="filter-busqueda-inv" placeholder="Buscar por tipo, ubicación, serie, marca, modelo o encargado..." style="flex:1; min-width:220px;">
         <select id="filter-garita-inv"><option value="">Todas las garitas</option></select>
         <select id="filter-tipo-inv"><option value="">Todos los tipos</option></select>
       </div>
       <div style="overflow-x:auto">
         <table id="tabla-inventario" class="responsive-cards">
-          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie / Código</th><th>Marca</th><th>Modelo</th><th>IP</th><th>Encargado</th><th>Puesto</th><th></th></tr></thead>
+          <thead><tr><th>Garita</th><th>Ubicación</th><th>Tipo</th><th>Serie / Código</th><th>Marca</th><th>Modelo</th><th>IP</th><th>Encargado</th><th>Puesto</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -112,6 +128,8 @@ export async function render(container, { ROL }) {
     const iMarca = container.querySelector("#i-marca");
     const iModelo = container.querySelector("#i-modelo");
     const iIp = container.querySelector("#i-ip");
+    const iUbicacion = container.querySelector("#i-ubicacion");
+    const dlUbicaciones = container.querySelector("#dl-ubicaciones");
     const iEncargado = container.querySelector("#i-encargado");
     const iPuesto = container.querySelector("#i-puesto");
     const wrapNuevoEncargado = container.querySelector("#wrap-nuevo-encargado");
@@ -137,6 +155,23 @@ export async function render(container, { ROL }) {
     }
     await refreshEncargadoSelect();
     iEncargado.addEventListener("change", actualizarVistaEncargado);
+
+    // Sugerencias de ubicación: las ya registradas (de la garita elegida, si hay una).
+    async function refreshUbicacionesList() {
+      const equiposAll = await getEquipos();
+      const g = iGarita.value;
+      const vistos = new Map();
+      equiposAll.forEach(e => {
+        if (!e.ubicacion || (g && e.garita !== g)) return;
+        const k = normalizarTexto(e.ubicacion);
+        if (!vistos.has(k)) vistos.set(k, e.ubicacion);
+      });
+      dlUbicaciones.innerHTML = [...vistos.values()]
+        .sort((a, b) => a.localeCompare(b, "es"))
+        .map(u => `<option value="${esc(u)}"></option>`).join("");
+    }
+    await refreshUbicacionesList();
+    iGarita.addEventListener("change", refreshUbicacionesList);
 
     // Crea al encargado nuevo evitando duplicados ("Jose Diaz" vs "jose diaz").
     // Devuelve su id, o null si el usuario canceló / hubo un problema.
@@ -197,6 +232,7 @@ export async function render(container, { ROL }) {
       iMarca.value = "";
       iModelo.value = "";
       iIp.value = "";
+      iUbicacion.value = "";
       iEncargado.value = "";
       iEncNuevoNombre.value = "";
       iEncNuevoPuesto.value = "";
@@ -210,6 +246,7 @@ export async function render(container, { ROL }) {
       const marca = iMarca.value.trim();
       const modelo = iModelo.value.trim();
       const ip = iIp.value.trim();
+      const ubicacion = ubicacionCanonica(iUbicacion.value, await getEquipos());
       let encargado_id = iEncargado.value || null;
 
       if (!serie) { msg.style.color = "#B42318"; msg.textContent = "Ingresa la serie/código del equipo."; return; }
@@ -233,13 +270,14 @@ export async function render(container, { ROL }) {
           if (!encargado_id) return;
         }
 
-        await addEquipo({ garita, tipo_id, serie, marca, modelo, ip, encargado_id });
+        await addEquipo({ garita, ubicacion, tipo_id, serie, marca, modelo, ip, encargado_id });
         limpiarFormulario();
         await refreshTipoSelect();
         await refreshEncargadoSelect();
         msg.style.color = "#1E7B34"; msg.textContent = "Equipo agregado.";
         setTimeout(() => msg.textContent = "", 2500);
         invalidateEquipos();
+        await refreshUbicacionesList();
         await refreshFiltroTipo();
         await renderTabla();
       } catch (err) {
@@ -279,7 +317,7 @@ export async function render(container, { ROL }) {
       if (fg && e.garita !== fg) return false;
       if (ft && e.tipo !== ft) return false;
       if (q) {
-        const texto = normalizarTexto([e.tipo, e.serie, e.marca, e.modelo, e.ip, e.encargado_nombre, e.encargado_puesto]
+        const texto = normalizarTexto([e.tipo, e.ubicacion, e.serie, e.marca, e.modelo, e.ip, e.encargado_nombre, e.encargado_puesto]
           .filter(Boolean).join(" "));
         if (!texto.includes(q)) return false;
       }
@@ -297,6 +335,10 @@ export async function render(container, { ROL }) {
         <td data-label="Garita">
           <span class="valor-garita">${e.garita}</span>
           <select class="edit-garita" style="display:none"></select>
+        </td>
+        <td data-label="Ubicación">
+          <span class="valor-ubicacion">${esc(e.ubicacion)}</span>
+          <input type="text" class="edit-ubicacion" list="dl-ubicaciones" autocomplete="off" value="${esc(e.ubicacion)}" style="display:none">
         </td>
         <td data-label="Tipo">${e.tipo}</td>
         <td data-label="Serie / Código">
@@ -342,7 +384,7 @@ export async function render(container, { ROL }) {
         );
         editEncargado.value = e.encargado_id || "";
 
-        const campos = ["garita", "serie", "marca", "modelo", "ip", "encargado"];
+        const campos = ["garita", "ubicacion", "serie", "marca", "modelo", "ip", "encargado"];
         const valores = {};
         const edits = {};
         campos.forEach(c => {
@@ -367,6 +409,7 @@ export async function render(container, { ROL }) {
         btnEditar.addEventListener("click", () => modoEdicion(true));
         btnCancelar.addEventListener("click", () => {
           editGarita.value = e.garita;
+          edits.ubicacion.value = e.ubicacion || "";
           edits.serie.value = e.serie;
           edits.marca.value = e.marca || "";
           edits.modelo.value = e.modelo || "";
@@ -380,6 +423,7 @@ export async function render(container, { ROL }) {
           try {
             await updateEquipo(e.id, {
               garita: editGarita.value,
+              ubicacion: ubicacionCanonica(edits.ubicacion.value, equipos),
               serie: nuevaSerie,
               marca: edits.marca.value.trim(),
               modelo: edits.modelo.value.trim(),

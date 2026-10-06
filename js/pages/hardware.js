@@ -132,7 +132,7 @@ export async function render(container, { ROL, session, perfil }) {
     const opciones = equipos.filter(e => (!g || e.garita === g) && (!t || e.tipo === t));
     fillSelectPairs(
       hEquipo,
-      opciones.map(e => ({ value: e.id, label: `${e.serie} — ${e.tipo} (${e.garita})` })),
+      opciones.map(e => ({ value: e.id, label: `${e.serie} — ${e.tipo} (${e.garita}${e.ubicacion ? " · " + e.ubicacion : ""})` })),
       opciones.length ? "Selecciona un equipo..." : "— No hay equipos con ese filtro —"
     );
   }

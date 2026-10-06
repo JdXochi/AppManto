@@ -137,7 +137,7 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
     opciones.forEach(e => {
       const o = document.createElement("option");
       o.value = e.id;
-      o.textContent = `${e.serie} — ${e.tipo} (${e.garita})`;
+      o.textContent = `${e.serie} — ${e.tipo} (${e.garita}${e.ubicacion ? " · " + e.ubicacion : ""})`;
       fSerie.appendChild(o);
     });
     onSerieChange();
