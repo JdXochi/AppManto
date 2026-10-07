@@ -4,12 +4,17 @@
 // =========================================================
 import { getEquipos } from "../equiposStore.js";
 import { addMantenimiento, addVistoBueno, subirFirma } from "../data.js";
-import { generarPDFConstancia } from "../pdf.js";
-import { GARITAS, fillSelect, tiposDisponibles, hoyLocalISO } from "../shared.js";
+import { generarPDFConstancia, generarPDFConstanciaMultiple, fmtDate } from "../pdf.js";
+import { GARITAS, fillSelect, tiposDisponibles, hoyLocalISO, esc } from "../shared.js";
 
 // Limpieza de listeners de window entre re-renders (evita fugas de memoria
 // si la persona entra y sale de esta pestaña varias veces).
 let cleanupPrevio = null;
+
+// Equipos agregados a la hoja actual. Vive a nivel de módulo para que no se
+// pierdan si la persona cambia de pestaña y regresa antes de guardar.
+// Cada item: { equipo, fecha, actividades, hallazgos, mantId, guardado }
+let hoja = [];
 
 export async function render(container, { session, perfil, preseleccionarEquipoId }) {
   if (cleanupPrevio) { cleanupPrevio(); cleanupPrevio = null; }
@@ -57,6 +62,21 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
         <label for="f-hallazgos">Hallazgos / Observaciones</label>
         <textarea id="f-hallazgos" placeholder="Ej. Sin novedad / Se detectó..."></textarea>
       </div>
+
+      <div class="btnrow">
+        <button class="secondary" id="btn-agregar-hoja" type="button">+ Agregar equipo a la hoja</button>
+        <span class="hint" id="hoja-msg"></span>
+      </div>
+
+      <h2 style="margin:18px 0 2px">Equipos en esta hoja <span class="hint" id="hoja-count"></span></h2>
+      <p class="sub">Agrega cada equipo que atendiste (por ejemplo CPU y monitor). Se firma una sola vez y se genera un solo PDF, pero cada equipo se registra por separado en el historial.</p>
+      <div style="overflow-x:auto">
+        <table id="tabla-hoja" class="responsive-cards">
+          <thead><tr><th>#</th><th>Equipo</th><th>Tipo</th><th>Ubicación</th><th>Fecha</th><th>Actividades</th><th>Hallazgos</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty" id="hoja-empty">Aún no has agregado equipos a la hoja.</p>
 
       <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
       <h2 style="margin-bottom:2px">Conformidad del trabajo realizado</h2>
@@ -123,12 +143,16 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
   function onSerieChange() {
     const eq = equipoSeleccionado();
     fFrecuencia.value = eq ? `Cada ${eq.frecuencia_meses} meses` : "";
-    fVoboNombre.value = eq ? (eq.encargado_nombre || "") : "";
-    fVoboPuesto.value = eq ? (eq.encargado_puesto || "") : "";
+    // Con equipos ya en la hoja, quien firma es el de la hoja: no se sobreescribe.
+    if (!hoja.length) {
+      fVoboNombre.value = eq ? (eq.encargado_nombre || "") : "";
+      fVoboPuesto.value = eq ? (eq.encargado_puesto || "") : "";
+    }
   }
   function refreshSerieOptions() {
     const g = fGarita.value, t = fTipo.value;
-    const opciones = equiposCache.filter(e => (!g || e.garita === g) && (!t || e.tipo === t));
+    const opciones = equiposCache.filter(e =>
+      (!g || e.garita === g) && (!t || e.tipo === t) && !hoja.some(i => i.equipo.id === e.id));
     fSerie.innerHTML = "";
     const oVacio = document.createElement("option");
     oVacio.value = "";
@@ -208,62 +232,164 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
     hasSignature = false;
   });
 
+  // ---- Hoja: agregar / quitar equipos ----
+  function distintoEncargado(a, b) {
+    return (a.encargado_id || a.encargado_nombre || "") !== (b.encargado_id || b.encargado_nombre || "");
+  }
+
+  // Devuelve true si el equipo quedó agregado. `msgEl` es donde se muestran los avisos.
+  function agregarEquipoALaHoja(msgEl) {
+    const eq = equipoSeleccionado();
+    const fecha = container.querySelector("#f-fecha").value;
+    const actividades = container.querySelector("#f-actividades").value.trim();
+    const hallazgos = container.querySelector("#f-hallazgos").value.trim();
+    const error = t => { msgEl.style.color = "#B42318"; msgEl.textContent = t; return false; };
+
+    if (!eq) return error("Selecciona un equipo del inventario.");
+    if (!fecha) return error("Selecciona la fecha.");
+    if (hoja.some(i => i.equipo.id === eq.id)) return error("Ese equipo ya está en la hoja.");
+
+    if (hoja.length && distintoEncargado(hoja[0].equipo, eq) && !confirm(
+      `Este equipo está a cargo de "${eq.encargado_nombre || "sin encargado"}", pero la hoja la firma ` +
+      `"${hoja[0].equipo.encargado_nombre || "sin encargado"}".\n\n¿Agregarlo de todos modos?`)) return false;
+
+    hoja.push({ equipo: eq, fecha, actividades, hallazgos, mantId: null, guardado: false });
+
+    // Preparar el siguiente equipo: se conservan garita, fecha y actividades
+    // (suelen repetirse); se limpian el tipo, el equipo y los hallazgos.
+    fTipo.value = "";
+    refreshSerieOptions();
+    container.querySelector("#f-hallazgos").value = "";
+    renderHoja();
+
+    msgEl.style.color = "#1E7B34";
+    msgEl.textContent = `Agregado. La hoja tiene ${hoja.length} equipo(s).`;
+    setTimeout(() => { if (msgEl.textContent.startsWith("Agregado")) msgEl.textContent = ""; }, 3000);
+    return true;
+  }
+
+  function renderHoja() {
+    const tbody = container.querySelector("#tabla-hoja tbody");
+    tbody.innerHTML = "";
+    container.querySelector("#hoja-count").textContent = hoja.length ? `(${hoja.length})` : "";
+    container.querySelector("#hoja-empty").style.display = hoja.length ? "none" : "block";
+    container.querySelector("#tabla-hoja").style.display = hoja.length ? "" : "none";
+
+    hoja.forEach((item, idx) => {
+      const e = item.equipo;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td data-label="#">${idx + 1}</td>
+        <td data-label="Equipo"><b>${esc(e.serie)}</b></td>
+        <td data-label="Tipo">${esc(e.tipo)}</td>
+        <td data-label="Ubicación">${esc(e.garita)}${e.ubicacion ? " · " + esc(e.ubicacion) : ""}</td>
+        <td data-label="Fecha">${fmtDate(item.fecha)}</td>
+        <td data-label="Actividades">${esc(item.actividades)}</td>
+        <td data-label="Hallazgos">${esc(item.hallazgos)}</td>
+        <td data-label="Acciones">${item.guardado
+          ? '<span class="hint">✓ Guardado</span>'
+          : '<button class="ghost" type="button">Quitar</button>'}</td>`;
+      const btnQuitar = tr.querySelector("button");
+      if (btnQuitar) btnQuitar.addEventListener("click", () => {
+        hoja.splice(idx, 1);
+        refreshSerieOptions();   // el equipo vuelve a aparecer en la lista
+        renderHoja();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+  renderHoja();
+
+  container.querySelector("#btn-agregar-hoja").addEventListener("click", () =>
+    agregarEquipoALaHoja(container.querySelector("#hoja-msg")));
+
   // ---- Guardar ----
   container.querySelector("#btn-guardar").addEventListener("click", async () => {
     const msg = container.querySelector("#save-msg");
-    const eq = equipoSeleccionado();
-    const fecha = container.querySelector("#f-fecha").value;
+    const error = t => { msg.style.color = "#B42318"; msg.textContent = t; };
     const tipoFirma = container.querySelector('input[name="tipofirma"]:checked').value;
+
+    // Si hay un equipo elegido en el formulario que aún no está en la hoja,
+    // se agrega solo (así sigue funcionando el flujo de un solo equipo).
+    if (fSerie.value && !hoja.some(i => i.equipo.id === fSerie.value)) {
+      if (!agregarEquipoALaHoja(msg)) return;
+    }
+    if (!hoja.length) return error("Agrega al menos un equipo a la hoja.");
+
     const voboNombre = fVoboNombre.value.trim();
     const voboPuesto = fVoboPuesto.value.trim();
-    const actividades = container.querySelector("#f-actividades").value.trim();
-    const hallazgos = container.querySelector("#f-hallazgos").value.trim();
-
-    if (!eq) { msg.style.color = "#B42318"; msg.textContent = "Selecciona un equipo del inventario."; return; }
-    if (!fecha) { msg.style.color = "#B42318"; msg.textContent = "Selecciona la fecha."; return; }
-    if (!voboNombre) { msg.style.color = "#B42318"; msg.textContent = "Ingresa el nombre de quien confirma el trabajo."; return; }
-    if (tipoFirma === "Digital" && !hasSignature) {
-      msg.style.color = "#B42318"; msg.textContent = "Falta capturar la firma digital (o cambia a firma física)."; return;
-    }
+    if (!voboNombre) return error("Ingresa el nombre de quien confirma el trabajo.");
+    if (tipoFirma === "Digital" && !hasSignature) return error("Falta capturar la firma digital (o cambia a firma física).");
 
     const btn = container.querySelector("#btn-guardar");
-    btn.disabled = true; btn.textContent = "Guardando...";
+    btn.disabled = true;
+
+    const firmaDataUrl = tipoFirma === "Digital" ? canvas.toDataURL("image/png") : null;
+    const pendientes = hoja.filter(i => !i.guardado);
+    let hechos = 0;
+    let actual = null;
 
     try {
-      const mant = await addMantenimiento({
-        equipo_id: eq.id,
-        fecha,
-        tecnico_id: session.user.id,
-        tecnico_nombre: perfil.nombre,
-        actividades,
-        hallazgos,
-      });
+      // Un mantenimiento por equipo, uno por uno, igual que antes.
+      for (const item of pendientes) {
+        actual = item;
+        btn.textContent = `Guardando ${hechos + 1} de ${pendientes.length}...`;
 
-      let firmaPath = null;
-      let firmaDataUrl = null;
-      if (tipoFirma === "Digital") {
-        firmaDataUrl = canvas.toDataURL("image/png");
-        firmaPath = await subirFirma(mant.id, firmaDataUrl);
+        if (!item.mantId) {
+          const mant = await addMantenimiento({
+            equipo_id: item.equipo.id,
+            fecha: item.fecha,
+            tecnico_id: session.user.id,
+            tecnico_nombre: perfil.nombre,
+            actividades: item.actividades,
+            hallazgos: item.hallazgos,
+          });
+          item.mantId = mant.id;   // si algo falla después, al reintentar no se duplica
+        }
+
+        // La misma firma se guarda para cada mantenimiento de la hoja.
+        const firmaPath = firmaDataUrl ? await subirFirma(item.mantId, firmaDataUrl) : null;
+
+        await addVistoBueno({
+          mantenimiento_id: item.mantId,
+          nombre: voboNombre,
+          puesto: voboPuesto,
+          tipo_firma: tipoFirma,
+          firma_path: firmaPath,
+        });
+
+        item.guardado = true;
+        hechos++;
+        renderHoja();
       }
 
-      await addVistoBueno({
-        mantenimiento_id: mant.id,
-        nombre: voboNombre,
-        puesto: voboPuesto,
-        tipo_firma: tipoFirma,
-        firma_path: firmaPath,
-      });
+      btn.textContent = "Generando PDF...";
+      const voboPdf = { nombre: voboNombre, puesto: voboPuesto, tipo_firma: tipoFirma, firmaDataUrl };
+      if (hoja.length === 1) {
+        const it = hoja[0];
+        await generarPDFConstancia(it.equipo,
+          { fecha: it.fecha, tecnico_nombre: perfil.nombre, actividades: it.actividades, hallazgos: it.hallazgos },
+          voboPdf);
+      } else {
+        await generarPDFConstanciaMultiple(
+          hoja.map(it => ({ equipo: it.equipo, registro: { fecha: it.fecha, actividades: it.actividades, hallazgos: it.hallazgos } })),
+          perfil.nombre, voboPdf);
+      }
 
-      await generarPDFConstancia(eq, { fecha, tecnico_nombre: perfil.nombre, actividades, hallazgos },
-        { nombre: voboNombre, puesto: voboPuesto, tipo_firma: tipoFirma, firmaDataUrl });
-
+      const total = hoja.length;
+      hoja = [];
+      renderHoja();
       limpiarFormularioCompleto();
 
-      msg.style.color = "#1E7B34"; msg.textContent = "Registro guardado y PDF generado.";
-      setTimeout(() => msg.textContent = "", 3000);
+      msg.style.color = "#1E7B34";
+      msg.textContent = total === 1 ? "Registro guardado y PDF generado." : `${total} mantenimientos guardados y PDF generado.`;
+      setTimeout(() => msg.textContent = "", 4000);
     } catch (err) {
       console.error(err);
-      msg.style.color = "#B42318"; msg.textContent = "Error al guardar: " + err.message;
+      msg.style.color = "#B42318";
+      msg.textContent = hechos || hoja.some(i => i.guardado)
+        ? `Se guardaron ${hoja.filter(i => i.guardado).length} de ${hoja.length}. Falló ${actual ? `"${actual.equipo.serie}"` : "el PDF"}: ${err.message}. Vuelve a presionar Guardar: solo se guardarán los pendientes.`
+        : "Error al guardar: " + err.message;
     } finally {
       btn.disabled = false; btn.textContent = "Guardar y generar PDF";
     }
