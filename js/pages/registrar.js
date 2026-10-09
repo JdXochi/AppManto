@@ -260,6 +260,7 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
     fTipo.value = "";
     refreshSerieOptions();
     container.querySelector("#f-hallazgos").value = "";
+    container.querySelector("#f-actividades").value = "";
     renderHoja();
 
     msgEl.style.color = "#1E7B34";
