@@ -2,9 +2,9 @@
 // Xochi · Control de Mantenimiento de Equipos
 // Página: Historial de mantenimientos
 // =========================================================
-import { listMantenimientos, deleteMantenimiento } from "../data.js";
+import { listMantenimientos, deleteMantenimiento, descargarFirmaDataUrl } from "../data.js";
 import { GARITAS, fillSelect, normalizarTexto, esc } from "../shared.js";
-import { fmtDate } from "../pdf.js";
+import { fmtDate, generarPDFConstancia } from "../pdf.js";
 
 export async function render(container, { ROL }) {
   container.innerHTML = `
@@ -93,9 +93,47 @@ export async function render(container, { ROL }) {
         <td data-label="Técnico">${esc(r.tecnico_nombre)}</td>
         <td data-label="Confirmó">${esc(vobo.nombre)}${vobo.puesto ? " · " + esc(vobo.puesto) : ""}</td>
         <td data-label="Firma">${esc(vobo.tipo_firma)}</td>
-        <td data-label="Acciones">${ROL === "admin" ? `<button class="ghost" data-id="${esc(r.id)}">Eliminar</button>` : ""}</td>`;
+        <td data-label="Acciones">
+          <button class="secondary" data-ver="${esc(r.id)}">Ver hoja</button>
+          ${ROL === "admin" ? `<button class="ghost" data-id="${esc(r.id)}">Eliminar</button>` : ""}
+        </td>`;
       tbody.appendChild(tr);
     });
+
+    // ---- Ver hoja: se vuelve a generar el PDF con lo que quedó registrado ----
+    const porId = new Map(filtrados.map(r => [r.id, r]));
+    tbody.querySelectorAll("[data-ver]").forEach(btn => btn.addEventListener("click", async () => {
+      const r = porId.get(btn.dataset.ver);
+      if (!r) return;
+      const eq = r.equipos || {};
+      const vobo = (r.vistos_buenos && r.vistos_buenos[0]) || {};
+
+      // Se abre la pestaña de inmediato (antes de esperar nada) para que el
+      // navegador no la bloquee; luego se le carga el PDF.
+      const ventana = window.open("", "_blank");
+      if (ventana) ventana.document.write("<p style='font-family:sans-serif;padding:24px'>Generando hoja...</p>");
+
+      const textoOriginal = btn.textContent;
+      btn.disabled = true; btn.textContent = "Generando...";
+      try {
+        let firmaDataUrl = null;
+        if (vobo.tipo_firma === "Digital" && vobo.firma_path) {
+          try { firmaDataUrl = await descargarFirmaDataUrl(vobo.firma_path); }
+          catch (e) { console.error("No se pudo cargar la firma:", e); }   // la hoja sale con aviso
+        }
+        await generarPDFConstancia(
+          eq,
+          { fecha: r.fecha, tecnico_nombre: r.tecnico_nombre, actividades: r.actividades, hallazgos: r.hallazgos },
+          { nombre: vobo.nombre, puesto: vobo.puesto, tipo_firma: vobo.tipo_firma, firmaDataUrl },
+          { regenerada: true, abrirEn: ventana || null }
+        );
+      } catch (err) {
+        if (ventana) ventana.close();
+        alert("No se pudo generar la hoja: " + err.message);
+      } finally {
+        btn.disabled = false; btn.textContent = textoOriginal;
+      }
+    }));
 
     tbody.querySelectorAll("[data-id]").forEach(btn => btn.addEventListener("click", async () => {
       if (!confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")) return;
