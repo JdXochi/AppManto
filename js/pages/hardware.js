@@ -18,8 +18,10 @@ function fmtQ(n) {
 }
 
 export async function render(container, { ROL, session, perfil }) {
+  const puedeRegistrar = ROL === "admin" || ROL === "tecnico";
+
   container.innerHTML = `
-    <div class="card">
+    <div class="card" id="card-registro-hw">
       <h2>Registrar cambio o reparación</h2>
       <p class="sub">Piezas cambiadas, baterías, tóner, reparaciones: todo lo que se le haga al hardware de un equipo.</p>
 
@@ -115,6 +117,10 @@ export async function render(container, { ROL, session, perfil }) {
   `;
 
   const $ = sel => container.querySelector(sel);
+
+  // El rol "usuario" solo consulta: se oculta el formulario (y la base de datos
+  // tampoco le permitiría guardar).
+  if (!puedeRegistrar) $("#card-registro-hw").style.display = "none";
   const hGarita = $("#h-garita"), hTipo = $("#h-tipo"), hEquipo = $("#h-equipo");
   const hAccion = $("#h-accion"), hCategoria = $("#h-categoria");
 

@@ -8,7 +8,8 @@ import { GARITAS, fillSelect, tiposDisponibles, normalizarTexto } from "../share
 import { exportarInventario, exportarMantenimientos } from "../exportExcel.js";
 
 export async function render(container, { ROL, perfil } = {}) {
-  const puedeExportar = ["admin", "tecnico"].includes(ROL);
+  // Todos los roles pueden descargar (el rol "usuario" es de solo lectura).
+  const puedeExportar = ["admin", "tecnico", "usuario"].includes(ROL);
 
   const tarjetasExcel = puedeExportar ? `
     <div class="card">
