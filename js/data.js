@@ -143,6 +143,26 @@ export async function listMantenimientos({ desde, hasta } = {}) {
   }));
 }
 
+// Versión liviana para la pantalla de Inicio: solo lo necesario para contar
+// mantenimientos por mes y mostrar la actividad reciente.
+export async function listActividadMantenimientos(desde) {
+  const data = await fetchAll(() => {
+    let q = supabase
+      .from("mantenimientos")
+      .select("id, fecha, tecnico_nombre, equipos ( garita, serie, tipos_equipo ( descripcion ) )");
+    if (desde) q = q.gte("fecha", desde);
+    return q.order("fecha", { ascending: false }).order("id", { ascending: true });
+  });
+  return data.map(r => ({
+    id: r.id,
+    fecha: r.fecha,
+    tecnico_nombre: r.tecnico_nombre,
+    garita: r.equipos?.garita || "",
+    serie: r.equipos?.serie || "",
+    tipo: r.equipos?.tipos_equipo?.descripcion || "",
+  }));
+}
+
 export async function addMantenimiento(registro) {
   const { data, error } = await supabase
     .from("mantenimientos")
