@@ -121,7 +121,7 @@ export async function generarPDFConstancia(equipo, registro, vobo) {
 
   // ---------- Datos del equipo ----------
   tituloSeccion("Datos del equipo");
-  filaDosColumnas("Serie / código", equipo.serie, "Garita", equipo.garita);
+  filaDosColumnas("Serie / código", equipo.serie, "Garita / Ubicación", [equipo.garita, equipo.ubicacion].filter(Boolean).join(" · "));
   filaDosColumnas("Tipo de equipo", equipo.tipo, "Frecuencia de mantenimiento", `Cada ${equipo.frecuencia_meses} meses`);
 
   // ---------- Mantenimiento realizado ----------

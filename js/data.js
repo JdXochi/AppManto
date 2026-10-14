@@ -5,6 +5,22 @@
 import { supabase } from "./supabaseClient.js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 
+// ---------- Utilidad: traer TODAS las filas ----------
+// Supabase devuelve como máximo 1,000 filas por consulta. Esta función pide
+// por páginas hasta traer todo. `buildQuery` debe devolver la consulta con un
+// orden determinista (incluyendo un campo único como último criterio) para que
+// ninguna fila se repita ni se salte entre páginas.
+async function fetchAll(buildQuery, pageSize = 1000) {
+  const out = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < pageSize) break;
+  }
+  return out;
+}
+
 // ---------- Tipos de equipo (catálogo) ----------
 
 export async function listTiposEquipo() {
@@ -40,15 +56,15 @@ export async function updateTipoEquipo(id, cambios) {
 // ---------- Equipos (inventario) ----------
 
 export async function listEquipos() {
-  const { data, error } = await supabase
+  const data = await fetchAll(() => supabase
     .from("equipos")
     .select(`
       id, garita, ubicacion, serie, modelo, marca, ip, encargado_nombre, encargado_puesto, encargado_id, tipo_id,
       tipos_equipo ( descripcion, frecuencia_meses )
     `)
     .eq("activo", true)
-    .order("garita", { ascending: true });
-  if (error) throw error;
+    .order("garita", { ascending: true })
+    .order("id", { ascending: true }));
   return data.map(e => ({
     ...e,
     tipo: e.tipos_equipo?.descripcion || "",
@@ -81,30 +97,45 @@ export async function updateEquipo(id, cambios) {
 // ---------- Seguimiento (estado por equipo, vista calculada) ----------
 
 export async function listSeguimiento() {
-  const { data, error } = await supabase
+  return fetchAll(() => supabase
     .from("seguimiento_equipos")
     .select("*")
-    .order("garita", { ascending: true });
-  if (error) throw error;
-  return data;
+    .order("garita", { ascending: true })
+    .order("id", { ascending: true }));
+}
+
+// Reporte de inventario (vista reporte_inventario): equipos activos con
+// ubicación, datos del equipo, encargado y estado de mantenimiento.
+export async function listReporteInventario() {
+  return fetchAll(() => supabase
+    .from("reporte_inventario")
+    .select("*")
+    .order("garita", { ascending: true })
+    .order("serie", { ascending: true })
+    .order("id", { ascending: true }));
 }
 
 // ---------- Mantenimientos ----------
 
-export async function listMantenimientos() {
-  const { data, error } = await supabase
-    .from("mantenimientos")
-    .select(`
-      id, fecha, tecnico_nombre, actividades, hallazgos, created_at,
-      equipos ( garita, serie, tipos_equipo ( descripcion, frecuencia_meses ) ),
-      vistos_buenos ( nombre, puesto, tipo_firma, firma_path )
-    `)
-    .order("fecha", { ascending: false });
-  if (error) throw error;
+// opciones (todas opcionales): { desde: "YYYY-MM-DD", hasta: "YYYY-MM-DD" }
+export async function listMantenimientos({ desde, hasta } = {}) {
+  const data = await fetchAll(() => {
+    let q = supabase
+      .from("mantenimientos")
+      .select(`
+        id, fecha, tecnico_nombre, actividades, hallazgos, created_at,
+        equipos ( garita, ubicacion, serie, tipos_equipo ( descripcion, frecuencia_meses ) ),
+        vistos_buenos ( nombre, puesto, tipo_firma, firma_path )
+      `);
+    if (desde) q = q.gte("fecha", desde);
+    if (hasta) q = q.lte("fecha", hasta);
+    return q.order("fecha", { ascending: false }).order("id", { ascending: true });
+  });
   return data.map(r => ({
     ...r,
     equipos: r.equipos ? {
       garita: r.equipos.garita,
+      ubicacion: r.equipos.ubicacion || "",
       serie: r.equipos.serie,
       tipo: r.equipos.tipos_equipo?.descripcion || "",
       frecuencia_meses: r.equipos.tipos_equipo?.frecuencia_meses ?? null,
