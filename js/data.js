@@ -300,21 +300,21 @@ export async function addCategoriaHardware(descripcion) {
 }
 
 export async function listCambiosHardware() {
-  const { data, error } = await supabase
+  const data = await fetchAll(() => supabase
     .from("cambios_hardware")
     .select(`
       id, fecha, accion, descripcion, costo, tecnico_nombre, created_at,
       categorias_hardware ( descripcion ),
-      equipos ( garita, serie, tipos_equipo ( descripcion ) )
+      equipos ( garita, ubicacion, serie, tipos_equipo ( descripcion ) )
     `)
     .order("fecha", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw error;
+    .order("id", { ascending: true }));
   return data.map(r => ({
     ...r,
     categoria: r.categorias_hardware?.descripcion || "",
     equipo: r.equipos ? {
       garita: r.equipos.garita,
+      ubicacion: r.equipos.ubicacion || "",
       serie: r.equipos.serie,
       tipo: r.equipos.tipos_equipo?.descripcion || "",
     } : null,
