@@ -3,9 +3,12 @@
 // Página: Reportes (totales generales — visible para todos los roles)
 // =========================================================
 import { getEquipos } from "../equiposStore.js";
-import { listReporteInventario, listMantenimientos } from "../data.js";
+import { listReporteInventario, listMantenimientos, listCambiosHardware, listCategoriasHardware } from "../data.js";
 import { GARITAS, fillSelect, tiposDisponibles, normalizarTexto } from "../shared.js";
-import { exportarInventario, exportarMantenimientos } from "../exportExcel.js";
+import {
+  exportarInventario, exportarMantenimientos,
+  exportarPendientes, exportarHardware, exportarCumplimiento,
+} from "../exportExcel.js";
 
 export async function render(container, { ROL, perfil } = {}) {
   // Todos los roles pueden descargar (el rol "usuario" es de solo lectura).
@@ -73,6 +76,80 @@ export async function render(container, { ROL, perfil } = {}) {
         <span class="hint" id="xm-msg"></span>
       </div>
     </div>
+
+    <div class="card">
+      <h2>Exportar pendientes y atrasados a Excel</h2>
+      <p class="sub">Los equipos que necesitan mantenimiento: primero los atrasados, luego los próximos a vencer y los que nunca han tenido.</p>
+      <div class="grid3">
+        <div class="field">
+          <label for="xp-garita">Garita</label>
+          <select id="xp-garita"></select>
+        </div>
+        <div class="field">
+          <label for="xp-tipo">Tipo de equipo</label>
+          <select id="xp-tipo"></select>
+        </div>
+        <div class="field">
+          <label for="xp-estado">Estado</label>
+          <select id="xp-estado">
+            <option value="">Todos los pendientes</option>
+            <option value="Atrasado">Atrasado</option>
+            <option value="Próximo">Próximo</option>
+            <option value="Sin registro">Sin registro</option>
+          </select>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="primary" id="btn-xp">Descargar Excel</button>
+        <span class="hint" id="xp-msg"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Exportar cambios de hardware a Excel</h2>
+      <p class="sub">Piezas cambiadas y reparaciones, con resumen de costos por pieza y por garita.</p>
+      <div class="grid3">
+        <div class="field">
+          <label for="xh-desde">Desde</label>
+          <input type="date" id="xh-desde">
+        </div>
+        <div class="field">
+          <label for="xh-hasta">Hasta</label>
+          <input type="date" id="xh-hasta">
+        </div>
+        <div class="field">
+          <label for="xh-accion">Qué se hizo</label>
+          <select id="xh-accion">
+            <option value="">Cambio y reparación</option>
+            <option value="Cambio de pieza">Cambio de pieza</option>
+            <option value="Reparación">Reparación</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label for="xh-garita">Garita</label>
+          <select id="xh-garita"></select>
+        </div>
+        <div class="field">
+          <label for="xh-categoria">Pieza / categoría</label>
+          <select id="xh-categoria"></select>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="primary" id="btn-xh">Descargar Excel</button>
+        <span class="hint" id="xh-msg"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Exportar cumplimiento a Excel</h2>
+      <p class="sub">Por garita y por tipo de equipo: cuántos están vigentes, próximos, atrasados o sin registro, y el porcentaje de cumplimiento.</p>
+      <div class="btnrow">
+        <button class="primary" id="btn-xc">Descargar Excel</button>
+        <span class="hint" id="xc-msg"></span>
+      </div>
+    </div>
   ` : "";
 
   container.innerHTML = `
@@ -134,6 +211,12 @@ export async function render(container, { ROL, perfil } = {}) {
   fillSelect(container.querySelector("#xi-tipo"), tipos, "Todos");
   fillSelect(container.querySelector("#xm-garita"), GARITAS, "Todas");
   fillSelect(container.querySelector("#xm-tipo"), tipos, "Todos");
+  fillSelect(container.querySelector("#xp-garita"), GARITAS, "Todas");
+  fillSelect(container.querySelector("#xp-tipo"), tipos, "Todos");
+  fillSelect(container.querySelector("#xh-garita"), GARITAS, "Todas");
+  let categoriasHw = [];
+  try { categoriasHw = (await listCategoriasHardware()).map(c => c.descripcion); } catch (e) { /* sin acceso: queda vacío */ }
+  fillSelect(container.querySelector("#xh-categoria"), categoriasHw, "Todas");
 
   // Ejecuta una exportación con el botón bloqueado y mensajes claros.
   async function ejecutar(btn, msg, textoBtn, tarea) {
@@ -212,6 +295,73 @@ export async function render(container, { ROL, perfil } = {}) {
         filtrosTexto: resumenFiltros([["Desde", desde], ["Hasta", hasta], ["Garita", g], ["Tipo", t], ["Técnico", tec]]),
       });
       return filas.length;
+    });
+  });
+
+  // ---- Pendientes y atrasados ----
+  container.querySelector("#btn-xp").addEventListener("click", () => {
+    const btn = container.querySelector("#btn-xp");
+    const msg = container.querySelector("#xp-msg");
+    ejecutar(btn, msg, "Descargar Excel", async () => {
+      const g = container.querySelector("#xp-garita").value;
+      const t = container.querySelector("#xp-tipo").value;
+      const e = container.querySelector("#xp-estado").value;
+
+      const todos = await listReporteInventario();
+      const filas = todos.filter(f =>
+        f.estado !== "Vigente" &&
+        (!g || f.garita === g) && (!t || f.tipo === t) && (!e || f.estado === e));
+      if (!filas.length) return 0;
+
+      await exportarPendientes(filas, {
+        usuario: perfil ? perfil.nombre : "",
+        filtrosTexto: resumenFiltros([["Garita", g], ["Tipo", t], ["Estado", e]]),
+      });
+      return filas.length;
+    });
+  });
+
+  // ---- Cambios de hardware ----
+  container.querySelector("#btn-xh").addEventListener("click", () => {
+    const btn = container.querySelector("#btn-xh");
+    const msg = container.querySelector("#xh-msg");
+    ejecutar(btn, msg, "Descargar Excel", async () => {
+      const desde = container.querySelector("#xh-desde").value;
+      const hasta = container.querySelector("#xh-hasta").value;
+      const a = container.querySelector("#xh-accion").value;
+      const g = container.querySelector("#xh-garita").value;
+      const c = container.querySelector("#xh-categoria").value;
+
+      if (desde && hasta && desde > hasta) throw new Error("La fecha \"Desde\" no puede ser mayor que \"Hasta\".");
+
+      const todos = await listCambiosHardware();
+      const filas = todos.filter(r => {
+        if (desde && r.fecha < desde) return false;
+        if (hasta && r.fecha > hasta) return false;
+        if (a && r.accion !== a) return false;
+        if (g && (r.equipo || {}).garita !== g) return false;
+        if (c && r.categoria !== c) return false;
+        return true;
+      });
+      if (!filas.length) return 0;
+
+      await exportarHardware(filas, {
+        usuario: perfil ? perfil.nombre : "",
+        filtrosTexto: resumenFiltros([["Desde", desde], ["Hasta", hasta], ["Qué se hizo", a], ["Garita", g], ["Pieza", c]]),
+      });
+      return filas.length;
+    });
+  });
+
+  // ---- Cumplimiento ----
+  container.querySelector("#btn-xc").addEventListener("click", () => {
+    const btn = container.querySelector("#btn-xc");
+    const msg = container.querySelector("#xc-msg");
+    ejecutar(btn, msg, "Descargar Excel", async () => {
+      const todos = await listReporteInventario();
+      if (!todos.length) return 0;
+      await exportarCumplimiento(todos, { usuario: perfil ? perfil.nombre : "" });
+      return todos.length;
     });
   });
 }
