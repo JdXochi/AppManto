@@ -189,6 +189,7 @@
 <div class="brand-stripe"><span class="g1"></span><span class="g2"></span><span class="g3"></span><span class="g4"></span></div>
 
 <nav id="nav">
+  <button class="tab" data-view="inicio" data-roles="admin,tecnico,usuario">Inicio</button>
   <button class="tab" data-view="registrar" data-roles="admin,tecnico">Registrar</button>
   <button class="tab" data-view="inventario" data-roles="admin,tecnico,usuario">Inventario</button>
   <button class="tab" data-view="estado" data-roles="admin,tecnico,usuario">Estado de equipos</button>
@@ -207,6 +208,7 @@
 <div class="nav-backdrop" id="nav-backdrop"></div>
 
 <main>
+  <section id="inicio" class="view"></section>
   <section id="registrar" class="view"></section>
   <section id="inventario" class="view"></section>
   <section id="estado" class="view"></section>
@@ -223,6 +225,7 @@
 <script type="module">
 import { requireSession, getPerfilActual, cerrarSesion } from "./js/supabaseClient.js";
 import { iniciarTemporizadorInactividad } from "./js/inactividad.js";
+import * as InicioPage from "./js/pages/inicio.js";
 import * as RegistrarPage from "./js/pages/registrar.js";
 import * as InventarioPage from "./js/pages/inventario.js";
 import * as EstadoPage from "./js/pages/estado.js";
@@ -235,6 +238,7 @@ import * as UsuariosPage from "./js/pages/usuarios.js";
 
 
 const PAGES = {
+  inicio: InicioPage,
   registrar: RegistrarPage,
   inventario: InventarioPage,
   estado: EstadoPage,
