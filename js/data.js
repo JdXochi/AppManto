@@ -185,6 +185,19 @@ export async function subirFirma(mantenimientoId, dataUrl) {
   return path;
 }
 
+// Descarga la imagen de una firma guardada y la devuelve como dataURL (para incrustarla en el PDF).
+export async function descargarFirmaDataUrl(path) {
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from("firmas").download(path);
+  if (error) throw error;
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error("No se pudo leer la imagen de la firma."));
+    r.readAsDataURL(data);
+  });
+}
+
 // Genera una URL temporal para poder ver/descargar una firma guardada.
 export async function urlFirma(path) {
   if (!path) return null;

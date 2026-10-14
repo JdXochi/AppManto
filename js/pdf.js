@@ -45,7 +45,10 @@ function getLogoDataUrl() {
 // equipo: { garita, tipo, serie, frecuencia_meses }
 // registro: { fecha, tecnico_nombre, actividades, hallazgos }
 // vobo: { nombre, puesto, tipo_firma, firmaDataUrl }
-export async function generarPDFConstancia(equipo, registro, vobo) {
+// opciones (todas opcionales):
+//   regenerada: true  -> hoja consultada después de registrarla (sin "pendiente de firmar")
+//   abrirEn: Window   -> abre el PDF en esa ventana en vez de descargarlo
+export async function generarPDFConstancia(equipo, registro, vobo, opciones = {}) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
@@ -139,6 +142,20 @@ export async function generarPDFConstancia(equipo, registro, vobo) {
   if (vobo.tipo_firma === "Digital" && vobo.firmaDataUrl) {
     doc.addImage(vobo.firmaDataUrl, "PNG", margin, y, 200, 76);
     y += 84;
+  } else if (opciones.regenerada) {
+    // Hoja consultada después: solo se indica cómo se firmó, sin línea en blanco.
+    const fisica = vobo.tipo_firma !== "Digital";
+    doc.setDrawColor(...LINE);
+    doc.roundedRect(margin, y, 300, 40, 4, 4, "S");
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.setTextColor(...INK);
+    doc.text(fisica ? "Firma física" : "Firma digital", margin + 12, y + 17);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text(
+      fisica ? "La conformidad se firmó en papel." : "Registrada en el sistema (la imagen no está disponible).",
+      margin + 12, y + 31);
+    y += 52;
   } else {
     doc.setDrawColor(...INK);
     doc.line(margin, y + 46, margin + 200, y + 46);
@@ -159,9 +176,17 @@ export async function generarPDFConstancia(equipo, registro, vobo) {
 
   doc.setFont("helvetica", "normal"); doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text(`Generado el ${fmtDate(hoyLocalISO())}`, margin, pageH - 26);
+  doc.text(
+    opciones.regenerada
+      ? `Copia consultada el ${fmtDate(hoyLocalISO())}, generada con los datos registrados en el sistema`
+      : `Generado el ${fmtDate(hoyLocalISO())}`,
+    margin, pageH - 26);
 
-  doc.save(`Mantenimiento_${equipo.serie}_${registro.fecha}.pdf`);
+  if (opciones.abrirEn) {
+    opciones.abrirEn.location.href = doc.output("bloburl");
+  } else {
+    doc.save(`Mantenimiento_${equipo.serie}_${registro.fecha}.pdf`);
+  }
 }
 
 // =========================================================
