@@ -3,7 +3,8 @@
 // Página: Estado de equipos
 // =========================================================
 import { listSeguimiento } from "../data.js";
-import { GARITAS, fillSelect, badgeClass } from "../shared.js";
+import { getEquipos } from "../equiposStore.js";
+import { GARITAS, fillSelect, badgeClass, esc } from "../shared.js";
 import { fmtDate } from "../pdf.js";
 
 // Orden de prioridad al mostrar la tabla: lo más urgente primero.
@@ -27,7 +28,7 @@ export async function render(container, { ROL })   {
       </div>
       <div style="overflow-x:auto">
         <table id="tabla-estado" class="responsive-cards">
-          <thead><tr><th>Garita</th><th>Tipo</th><th>Serie</th><th>Encargado</th><th>Última fecha</th><th>Próxima fecha</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Garita</th><th>Ubicación</th><th>Tipo</th><th>Serie</th><th>Encargado</th><th>Última fecha</th><th>Próxima fecha</th><th>Estado</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -40,6 +41,8 @@ export async function render(container, { ROL })   {
 
   async function renderTabla() {
     const seguimiento = await listSeguimiento();
+    // La ubicación vive en el inventario: se cruza por id (sin modificar la vista).
+    const ubicacionPorId = new Map((await getEquipos()).map(e => [e.id, e.ubicacion || ""]));
     const fg = container.querySelector("#filter-garita-estado").value;
     const fs = container.querySelector("#filter-status-estado").value;
     const counts = { "Vigente": 0, "Próximo": 0, "Atrasado": 0, "Sin registro": 0 };
@@ -58,7 +61,7 @@ export async function render(container, { ROL })   {
       .sort((a, b) => (PRIORIDAD_ESTADO[a.estado] ?? 9) - (PRIORIDAD_ESTADO[b.estado] ?? 9))
       .forEach(s => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td data-label="Garita">${s.garita}</td><td data-label="Tipo">${s.tipo}</td><td data-label="Serie"><b>${s.serie}</b></td><td data-label="Encargado">${s.encargado_nombre||""}</td>
+        tr.innerHTML = `<td data-label="Garita">${esc(s.garita)}</td><td data-label="Ubicación">${esc(ubicacionPorId.get(s.id))}</td><td data-label="Tipo">${esc(s.tipo)}</td><td data-label="Serie"><b>${esc(s.serie)}</b></td><td data-label="Encargado">${esc(s.encargado_nombre)}</td>
           <td data-label="Última fecha">${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td data-label="Próxima fecha">${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
           <td data-label="Estado"><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>
           <td data-label="Acciones">${["admin", "tecnico"].includes(ROL)? `<button class="secondary btn-ir-registrar" data-equipo-id="${s.id}">Registrar</button>`:""}</td>`;

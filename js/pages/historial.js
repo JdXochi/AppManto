@@ -3,7 +3,7 @@
 // Página: Historial de mantenimientos
 // =========================================================
 import { listMantenimientos, deleteMantenimiento } from "../data.js";
-import { GARITAS, fillSelect, normalizarTexto } from "../shared.js";
+import { GARITAS, fillSelect, normalizarTexto, esc } from "../shared.js";
 import { fmtDate } from "../pdf.js";
 
 export async function render(container, { ROL }) {
@@ -11,7 +11,7 @@ export async function render(container, { ROL }) {
     <div class="card">
       <h2>Historial de mantenimientos</h2>
       <div class="filters">
-        <input type="text" id="filter-busqueda-hist" placeholder="Buscar por serie, tipo, técnico o quien confirmó..." style="flex:1; min-width:220px;">
+        <input type="text" id="filter-busqueda-hist" placeholder="Buscar por serie, tipo, ubicación, actividades, técnico o quien confirmó..." style="flex:1; min-width:220px;">
         <select id="filter-garita-hist"><option value="">Todas las garitas</option></select>
         <select id="filter-firma-hist">
           <option value="">Cualquier tipo de firma</option>
@@ -34,7 +34,7 @@ export async function render(container, { ROL }) {
       </div>
       <div style="overflow-x:auto">
         <table id="tabla-historial" class="responsive-cards">
-          <thead><tr><th>Fecha</th><th>Serie</th><th>Garita / Tipo</th><th>Técnico</th><th>Confirmó</th><th>Firma</th><th></th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Serie</th><th>Garita / Tipo</th><th>Ubicación</th><th>Actividades realizadas</th><th>Hallazgos</th><th>Técnico</th><th>Confirmó</th><th>Firma</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -69,7 +69,7 @@ export async function render(container, { ROL }) {
       if (desde && r.fecha < desde) return false;
       if (hasta && r.fecha > hasta) return false;
       if (q) {
-        const texto = normalizarTexto([eq.serie, eq.tipo, r.tecnico_nombre, vobo.nombre, vobo.puesto].filter(Boolean).join(" "));
+        const texto = normalizarTexto([eq.serie, eq.tipo, eq.ubicacion, r.actividades, r.hallazgos, r.tecnico_nombre, vobo.nombre, vobo.puesto].filter(Boolean).join(" "));
         if (!texto.includes(q)) return false;
       }
       return true;
@@ -85,12 +85,15 @@ export async function render(container, { ROL }) {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td data-label="Fecha">${fmtDate(r.fecha)}</td>
-        <td data-label="Serie"><b>${eq.serie||""}</b></td>
-        <td data-label="Garita / Tipo">${eq.garita||""} / ${eq.tipo||""}</td>
-        <td data-label="Técnico">${r.tecnico_nombre||""}</td>
-        <td data-label="Confirmó">${vobo.nombre||""}${vobo.puesto ? " · "+vobo.puesto : ""}</td>
-        <td data-label="Firma">${vobo.tipo_firma||""}</td>
-        <td data-label="Acciones">${ROL === "admin" ? `<button class="ghost" data-id="${r.id}">Eliminar</button>` : ""}</td>`;
+        <td data-label="Serie"><b>${esc(eq.serie)}</b></td>
+        <td data-label="Garita / Tipo">${esc(eq.garita)} / ${esc(eq.tipo)}</td>
+        <td data-label="Ubicación">${esc(eq.ubicacion)}</td>
+        <td data-label="Actividades realizadas" style="min-width:200px; white-space:pre-line">${esc(r.actividades)}</td>
+        <td data-label="Hallazgos" style="min-width:160px; white-space:pre-line">${esc(r.hallazgos)}</td>
+        <td data-label="Técnico">${esc(r.tecnico_nombre)}</td>
+        <td data-label="Confirmó">${esc(vobo.nombre)}${vobo.puesto ? " · " + esc(vobo.puesto) : ""}</td>
+        <td data-label="Firma">${esc(vobo.tipo_firma)}</td>
+        <td data-label="Acciones">${ROL === "admin" ? `<button class="ghost" data-id="${esc(r.id)}">Eliminar</button>` : ""}</td>`;
       tbody.appendChild(tr);
     });
 
