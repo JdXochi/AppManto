@@ -235,6 +235,7 @@ import * as ReportesPage from "./js/pages/reportes.js";
 import * as CatalogoPage from "./js/pages/catalogo.js";
 import * as EncargadosPage from "./js/pages/encargados.js";
 import * as UsuariosPage from "./js/pages/usuarios.js";
+  import { iniciarFicha } from "./js/ficha.js";
 
 
 const PAGES = {
@@ -329,6 +330,7 @@ document.querySelectorAll("#nav .tab").forEach(btn => {
 });
 
 if (primeraVisible) activarVista(primeraVisible.dataset.view);
+  iniciarFicha(authCtx);
 </script>
 </body>
 </html>
