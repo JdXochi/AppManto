@@ -234,7 +234,7 @@ export async function render(container, { ROL, perfil } = {}) {
   const atencionHtml = atencion.length ? atencion.map(f => `
     <div class="item">
       <span class="pill" style="background:${COLOR[f.estado]}1F; color:${COLOR[f.estado]}">${f.estado}</span>
-      <div class="info"><b>${esc(f.serie)}</b>
+      <div class="info"><b data-ficha="${esc(f.id)}" title="Ver ficha del equipo">${esc(f.serie)}</b>
         <span class="sub2">${esc(f.tipo)} · ${esc(f.garita)}${f.ubicacion ? " · " + esc(f.ubicacion) : ""}</span></div>
       <span class="der">${detalleAtencion(f)}</span>
       ${puedeRegistrar ? `<button class="secondary" data-registrar="${esc(f.id)}">Registrar</button>` : ""}
@@ -244,7 +244,7 @@ export async function render(container, { ROL, perfil } = {}) {
   const recientes = actividad.slice(0, 6);
   const recientesHtml = recientes.length ? recientes.map(r => `
     <div class="item">
-      <div class="info"><b>${esc(r.serie)}</b>
+      <div class="info"><b data-ficha="${esc(r.equipo_id)}" title="Ver ficha del equipo">${esc(r.serie)}</b>
         <span class="sub2">${esc(r.tipo)} · ${esc(r.garita)}</span></div>
       <span class="der">${fmtDate(r.fecha)}<br>${esc(r.tecnico_nombre)}</span>
     </div>`).join("")

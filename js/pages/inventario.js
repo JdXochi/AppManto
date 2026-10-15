@@ -342,7 +342,7 @@ export async function render(container, { ROL }) {
         </td>
         <td data-label="Tipo">${e.tipo}</td>
         <td data-label="Serie / Código">
-          <span class="valor-serie"><b>${e.serie}</b></span>
+          <span class="valor-serie"><b data-ficha="${esc(e.id)}" title="Ver ficha del equipo">${esc(e.serie)}</b></span>
           <input type="text" class="edit-serie" value="${e.serie}" style="display:none">
         </td>
         <td data-label="Marca">

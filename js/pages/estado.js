@@ -61,7 +61,7 @@ export async function render(container, { ROL })   {
       .sort((a, b) => (PRIORIDAD_ESTADO[a.estado] ?? 9) - (PRIORIDAD_ESTADO[b.estado] ?? 9))
       .forEach(s => {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td data-label="Garita">${esc(s.garita)}</td><td data-label="Ubicación">${esc(ubicacionPorId.get(s.id))}</td><td data-label="Tipo">${esc(s.tipo)}</td><td data-label="Serie"><b>${esc(s.serie)}</b></td><td data-label="Encargado">${esc(s.encargado_nombre)}</td>
+        tr.innerHTML = `<td data-label="Garita">${esc(s.garita)}</td><td data-label="Ubicación">${esc(ubicacionPorId.get(s.id))}</td><td data-label="Tipo">${esc(s.tipo)}</td><td data-label="Serie"><b data-ficha="${esc(s.id)}" title="Ver ficha del equipo">${esc(s.serie)}</b></td><td data-label="Encargado">${esc(s.encargado_nombre)}</td>
           <td data-label="Última fecha">${s.ultima_fecha ? fmtDate(s.ultima_fecha) : "—"}</td><td data-label="Próxima fecha">${s.proxima_fecha ? fmtDate(s.proxima_fecha) : "—"}</td>
           <td data-label="Estado"><span class="badge ${badgeClass(s.estado)}">${s.estado}</span></td>
           <td data-label="Acciones">${["admin", "tecnico"].includes(ROL)? `<button class="secondary btn-ir-registrar" data-equipo-id="${s.id}">Registrar</button>`:""}</td>`;

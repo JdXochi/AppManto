@@ -17,7 +17,7 @@ function fmtQ(n) {
   return "Q " + Number(n).toLocaleString("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export async function render(container, { ROL, session, perfil }) {
+export async function render(container, { ROL, session, perfil, preseleccionarEquipoId }) {
   const puedeRegistrar = ROL === "admin" || ROL === "tecnico";
 
   container.innerHTML = `
@@ -143,6 +143,16 @@ export async function render(container, { ROL, session, perfil }) {
     );
   }
   refreshEquipos();
+  // Si llega desde la ficha de un equipo, se deja ese equipo ya elegido.
+  if (preseleccionarEquipoId) {
+    const eqPre = equipos.find(e => e.id === preseleccionarEquipoId);
+    if (eqPre) {
+      hGarita.value = eqPre.garita;
+      hTipo.value = eqPre.tipo;
+      refreshEquipos();
+      hEquipo.value = eqPre.id;
+    }
+  }
   hGarita.addEventListener("change", refreshEquipos);
   hTipo.addEventListener("change", refreshEquipos);
 
@@ -282,7 +292,7 @@ export async function render(container, { ROL, session, perfil }) {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td data-label="Fecha">${fmtDate(r.fecha)}</td>
-        <td data-label="Equipo"><b>${esc(eq.serie)}</b></td>
+        <td data-label="Equipo"><b data-ficha="${esc(r.equipo_id)}" title="Ver ficha del equipo">${esc(eq.serie)}</b></td>
         <td data-label="Garita / Tipo">${esc(eq.garita)} / ${esc(eq.tipo)}</td>
         <td data-label="Qué se hizo">${esc(r.accion)}</td>
         <td data-label="Pieza">${esc(r.categoria)}</td>

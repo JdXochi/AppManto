@@ -2,9 +2,10 @@
 // Xochi · Control de Mantenimiento de Equipos
 // Página: Historial de mantenimientos
 // =========================================================
-import { listMantenimientos, deleteMantenimiento, descargarFirmaDataUrl } from "../data.js";
+import { listMantenimientos, deleteMantenimiento } from "../data.js";
+import { verHoja } from "../verHoja.js";
 import { GARITAS, fillSelect, normalizarTexto, esc } from "../shared.js";
-import { fmtDate, generarPDFConstancia } from "../pdf.js";
+import { fmtDate } from "../pdf.js";
 
 export async function render(container, { ROL }) {
   container.innerHTML = `
@@ -85,7 +86,7 @@ export async function render(container, { ROL }) {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td data-label="Fecha">${fmtDate(r.fecha)}</td>
-        <td data-label="Serie"><b>${esc(eq.serie)}</b></td>
+        <td data-label="Serie"><b data-ficha="${esc(r.equipo_id)}" title="Ver ficha del equipo">${esc(eq.serie)}</b></td>
         <td data-label="Garita / Tipo">${esc(eq.garita)} / ${esc(eq.tipo)}</td>
         <td data-label="Ubicación">${esc(eq.ubicacion)}</td>
         <td data-label="Actividades realizadas" style="min-width:200px; white-space:pre-line">${esc(r.actividades)}</td>
@@ -102,37 +103,15 @@ export async function render(container, { ROL }) {
 
     // ---- Ver hoja: se vuelve a generar el PDF con lo que quedó registrado ----
     const porId = new Map(filtrados.map(r => [r.id, r]));
-    tbody.querySelectorAll("[data-ver]").forEach(btn => btn.addEventListener("click", async () => {
+    tbody.querySelectorAll("[data-ver]").forEach(btn => btn.addEventListener("click", () => {
       const r = porId.get(btn.dataset.ver);
       if (!r) return;
-      const eq = r.equipos || {};
-      const vobo = (r.vistos_buenos && r.vistos_buenos[0]) || {};
-
-      // Se abre la pestaña de inmediato (antes de esperar nada) para que el
-      // navegador no la bloquee; luego se le carga el PDF.
-      const ventana = window.open("", "_blank");
-      if (ventana) ventana.document.write("<p style='font-family:sans-serif;padding:24px'>Generando hoja...</p>");
-
-      const textoOriginal = btn.textContent;
-      btn.disabled = true; btn.textContent = "Generando...";
-      try {
-        let firmaDataUrl = null;
-        if (vobo.tipo_firma === "Digital" && vobo.firma_path) {
-          try { firmaDataUrl = await descargarFirmaDataUrl(vobo.firma_path); }
-          catch (e) { console.error("No se pudo cargar la firma:", e); }   // la hoja sale con aviso
-        }
-        await generarPDFConstancia(
-          eq,
-          { fecha: r.fecha, tecnico_nombre: r.tecnico_nombre, actividades: r.actividades, hallazgos: r.hallazgos },
-          { nombre: vobo.nombre, puesto: vobo.puesto, tipo_firma: vobo.tipo_firma, firmaDataUrl },
-          { regenerada: true, abrirEn: ventana || null }
-        );
-      } catch (err) {
-        if (ventana) ventana.close();
-        alert("No se pudo generar la hoja: " + err.message);
-      } finally {
-        btn.disabled = false; btn.textContent = textoOriginal;
-      }
+      verHoja({
+        equipo: r.equipos || {},
+        registro: r,
+        vobo: (r.vistos_buenos && r.vistos_buenos[0]) || {},
+        boton: btn,
+      });
     }));
 
     tbody.querySelectorAll("[data-id]").forEach(btn => btn.addEventListener("click", async () => {
