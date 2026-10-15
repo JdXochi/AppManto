@@ -123,7 +123,7 @@ export async function listMantenimientos({ desde, hasta } = {}) {
     let q = supabase
       .from("mantenimientos")
       .select(`
-        id, fecha, tecnico_nombre, actividades, hallazgos, created_at,
+        id, equipo_id, fecha, tecnico_nombre, actividades, hallazgos, created_at,
         equipos ( garita, ubicacion, serie, tipos_equipo ( descripcion, frecuencia_meses ) ),
         vistos_buenos ( nombre, puesto, tipo_firma, firma_path )
       `);
@@ -149,18 +149,51 @@ export async function listActividadMantenimientos(desde) {
   const data = await fetchAll(() => {
     let q = supabase
       .from("mantenimientos")
-      .select("id, fecha, tecnico_nombre, equipos ( garita, serie, tipos_equipo ( descripcion ) )");
+      .select("id, equipo_id, fecha, tecnico_nombre, equipos ( garita, serie, tipos_equipo ( descripcion ) )");
     if (desde) q = q.gte("fecha", desde);
     return q.order("fecha", { ascending: false }).order("id", { ascending: true });
   });
   return data.map(r => ({
     id: r.id,
+    equipo_id: r.equipo_id,
     fecha: r.fecha,
     tecnico_nombre: r.tecnico_nombre,
     garita: r.equipos?.garita || "",
     serie: r.equipos?.serie || "",
     tipo: r.equipos?.tipos_equipo?.descripcion || "",
   }));
+}
+
+// ---------- Ficha del equipo ----------
+
+// Datos del equipo con su estado (vista reporte_inventario). Devuelve null si no existe.
+export async function getEquipoFicha(equipoId) {
+  const { data, error } = await supabase
+    .from("reporte_inventario")
+    .select("*")
+    .eq("id", equipoId)
+    .limit(1);
+  if (error) throw error;
+  return data && data.length ? data[0] : null;
+}
+
+export async function listMantenimientosDeEquipo(equipoId) {
+  return fetchAll(() => supabase
+    .from("mantenimientos")
+    .select("id, fecha, tecnico_nombre, actividades, hallazgos, vistos_buenos ( nombre, puesto, tipo_firma, firma_path )")
+    .eq("equipo_id", equipoId)
+    .order("fecha", { ascending: false })
+    .order("id", { ascending: true }));
+}
+
+export async function listCambiosHardwareDeEquipo(equipoId) {
+  const data = await fetchAll(() => supabase
+    .from("cambios_hardware")
+    .select("id, fecha, accion, descripcion, costo, tecnico_nombre, categorias_hardware ( descripcion )")
+    .eq("equipo_id", equipoId)
+    .order("fecha", { ascending: false })
+    .order("id", { ascending: true }));
+  return data.map(r => ({ ...r, categoria: r.categorias_hardware?.descripcion || "" }));
 }
 
 export async function addMantenimiento(registro) {
@@ -336,7 +369,7 @@ export async function listCambiosHardware() {
   const data = await fetchAll(() => supabase
     .from("cambios_hardware")
     .select(`
-      id, fecha, accion, descripcion, costo, tecnico_nombre, created_at,
+      id, equipo_id, fecha, accion, descripcion, costo, tecnico_nombre, created_at,
       categorias_hardware ( descripcion ),
       equipos ( garita, ubicacion, serie, tipos_equipo ( descripcion ) )
     `)
