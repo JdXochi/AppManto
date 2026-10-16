@@ -196,6 +196,28 @@ export async function listCambiosHardwareDeEquipo(equipoId) {
   return data.map(r => ({ ...r, categoria: r.categorias_hardware?.descripcion || "" }));
 }
 
+// ---------- Bitácora de movimientos (solo admin) ----------
+// filtros (todos opcionales): { desde, hasta, tabla, accion, usuario, texto }
+// Devuelve una página de `limite` filas a partir de `offset`, de la más reciente a la más antigua.
+export async function listBitacora({ desde, hasta, tabla, accion, usuario, texto, limite = 100, offset = 0 } = {}) {
+  let q = supabase
+    .from("bitacora")
+    .select("id, created_at, usuario_nombre, accion, tabla, descripcion, antes, despues");
+  // Guatemala siempre es UTC-6 (sin horario de verano)
+  if (desde) q = q.gte("created_at", `${desde}T00:00:00-06:00`);
+  if (hasta) q = q.lte("created_at", `${hasta}T23:59:59.999-06:00`);
+  if (tabla) q = q.eq("tabla", tabla);
+  if (accion) q = q.eq("accion", accion);
+  if (usuario) q = q.ilike("usuario_nombre", `%${usuario}%`);
+  if (texto) q = q.ilike("descripcion", `%${texto}%`);
+  const { data, error } = await q
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(offset, offset + limite - 1);
+  if (error) throw error;
+  return data;
+}
+
 export async function addMantenimiento(registro) {
   const { data, error } = await supabase
     .from("mantenimientos")
