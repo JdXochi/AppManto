@@ -4,7 +4,7 @@
 // =========================================================
 import { listMantenimientos, deleteMantenimiento } from "../data.js";
 import { verHoja } from "../verHoja.js";
-import { GARITAS, fillSelect, normalizarTexto, esc } from "../shared.js";
+import { GARITAS, fillSelect, normalizarTexto, esc, DIAS_ALERTA_REGISTRO, diasRegistroTardio, fmtFechaHoraGT } from "../shared.js";
 import { fmtDate } from "../pdf.js";
 
 export async function render(container, { ROL }) {
@@ -83,9 +83,11 @@ export async function render(container, { ROL }) {
     filtrados.forEach(r => {
       const eq = r.equipos || {};
       const vobo = (r.vistos_buenos && r.vistos_buenos[0]) || {};
+      const diasTarde = diasRegistroTardio(r.fecha, r.created_at);
+      const tarde = diasTarde > DIAS_ALERTA_REGISTRO;
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td data-label="Fecha">${fmtDate(r.fecha)}</td>
+        <td data-label="Fecha">${fmtDate(r.fecha)}<small style="display:block; margin-top:3px; font-size:11.5px; ${tarde ? "color:#B8620A; font-weight:700" : "color:var(--muted)"}">Registrado ${fmtFechaHoraGT(r.created_at)}${tarde ? ` · ${diasTarde} días después` : ""}</small></td>
         <td data-label="Serie"><b data-ficha="${esc(r.equipo_id)}" title="Ver ficha del equipo">${esc(eq.serie)}</b></td>
         <td data-label="Garita / Tipo">${esc(eq.garita)} / ${esc(eq.tipo)}</td>
         <td data-label="Ubicación">${esc(eq.ubicacion)}</td>

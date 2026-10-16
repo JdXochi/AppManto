@@ -125,6 +125,7 @@ export async function render(container, { ROL, session, perfil, preseleccionarEq
   const hAccion = $("#h-accion"), hCategoria = $("#h-categoria");
 
   $("#h-fecha").value = hoyLocalISO();
+  $("#h-fecha").max = hoyLocalISO();   // no se pueden elegir fechas futuras
   $("#h-tecnico").value = perfil ? perfil.nombre : "";
   fillSelect(hGarita, GARITAS, "Todas");
   fillSelect(hAccion, ACCIONES, null);
@@ -191,6 +192,7 @@ export async function render(container, { ROL, session, perfil, preseleccionarEq
 
     if (!equipoId) return error("Selecciona un equipo.");
     if (!fecha) return error("Selecciona la fecha.");
+    if (fecha > hoyLocalISO()) return error("La fecha no puede ser futura.");
     if (!hCategoria.value) return error("Selecciona la pieza o categoría.");
     if (costo !== null && (isNaN(costo) || costo < 0)) return error("El costo no es válido.");
 

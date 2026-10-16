@@ -5,7 +5,7 @@
 import { getEquipos } from "../equiposStore.js";
 import { addMantenimiento, addVistoBueno, subirFirma } from "../data.js";
 import { generarPDFConstancia, generarPDFConstanciaMultiple, fmtDate } from "../pdf.js";
-import { GARITAS, fillSelect, tiposDisponibles, hoyLocalISO, esc } from "../shared.js";
+import { GARITAS, fillSelect, tiposDisponibles, hoyLocalISO, esc, DIAS_ALERTA_REGISTRO } from "../shared.js";
 
 // Limpieza de listeners de window entre re-renders (evita fugas de memoria
 // si la persona entra y sale de esta pestaña varias veces).
@@ -131,6 +131,7 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
 
   container.querySelector("#f-tecnico").value = perfil ? perfil.nombre : "";
   container.querySelector("#f-fecha").value = hoyLocalISO();
+  container.querySelector("#f-fecha").max = hoyLocalISO();   // no se pueden elegir fechas futuras
 
   fillSelect(fGarita, GARITAS, "Todas");
 
@@ -247,6 +248,16 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
 
     if (!eq) return error("Selecciona un equipo del inventario.");
     if (!fecha) return error("Selecciona la fecha.");
+
+    // Validación de la fecha: nunca futura, y con aviso si es de hace varios días.
+    const hoyISO = hoyLocalISO();
+    if (fecha > hoyISO) return error("La fecha no puede ser futura.");
+    const diasAtras = Math.round((Date.parse(hoyISO + "T00:00:00Z") - Date.parse(fecha + "T00:00:00Z")) / 86400000);
+    if (diasAtras > DIAS_ALERTA_REGISTRO && !confirm(
+      `La fecha ${fmtDate(fecha)} es de hace ${diasAtras} días.\n\n` +
+      `Si el mantenimiento se realizó ese día, presiona Aceptar. Si no, presiona Cancelar y corrige la fecha.\n\n` +
+      `Nota: el sistema guarda también el día en que se registra realmente.`)) return false;
+
     if (hoja.some(i => i.equipo.id === eq.id)) return error("Ese equipo ya está en la hoja.");
 
     if (hoja.length && distintoEncargado(hoja[0].equipo, eq) && !confirm(
@@ -260,7 +271,6 @@ export async function render(container, { session, perfil, preseleccionarEquipoI
     fTipo.value = "";
     refreshSerieOptions();
     container.querySelector("#f-hallazgos").value = "";
-    container.querySelector("#f-actividades").value = "";
     renderHoja();
 
     msgEl.style.color = "#1E7B34";
