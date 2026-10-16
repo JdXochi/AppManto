@@ -114,3 +114,36 @@ export function buscarEncargadosParecidos(nombre, lista, ignorarId = null) {
   });
   return { exactos, parecidos };
 }
+
+// ---------------------------------------------------------------
+// Fechas de registro (validaciones)
+// ---------------------------------------------------------------
+
+// A partir de cuántos días de diferencia entre la fecha del mantenimiento y el
+// día en que se registra se pide confirmación y se marca en el historial.
+export const DIAS_ALERTA_REGISTRO = 7;
+
+const ZONA = "America/Guatemala";
+
+// Día calendario (YYYY-MM-DD) de un instante, en hora de Guatemala
+export function fechaGT(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ZONA });
+}
+
+// "dd/mm/yyyy hh:mm" en hora de Guatemala
+export function fmtFechaHoraGT(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const f = d.toLocaleDateString("es-GT", { timeZone: ZONA, day: "2-digit", month: "2-digit", year: "numeric" });
+  const h = d.toLocaleTimeString("es-GT", { timeZone: ZONA, hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${f} ${h}`;
+}
+
+// Días entre la fecha del mantenimiento y el día en que realmente se registró.
+// 0 = el mismo día; 30 = se registró 30 días después de la fecha indicada.
+export function diasRegistroTardio(fecha, createdAt) {
+  if (!fecha || !createdAt) return 0;
+  const t = iso => Date.parse(String(iso).slice(0, 10) + "T00:00:00Z");
+  return Math.round((t(fechaGT(createdAt)) - t(fecha)) / 86400000);
+}

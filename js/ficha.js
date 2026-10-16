@@ -7,7 +7,7 @@
 // (o con window.abrirFicha(id) / con la dirección dashboard.html?equipo=<id>).
 // =========================================================
 import { getEquipoFicha, listMantenimientosDeEquipo, listCambiosHardwareDeEquipo } from "./data.js";
-import { esc, hoyLocalISO } from "./shared.js";
+import { esc, hoyLocalISO, DIAS_ALERTA_REGISTRO, diasRegistroTardio, fmtFechaHoraGT } from "./shared.js";
 import { fmtDate } from "./pdf.js";
 import { verHoja } from "./verHoja.js";
 
@@ -91,6 +91,8 @@ body.fi-lock{ overflow:hidden; }
 .fi-firma.dig{ background:#E4F5EB; color:#0B7A3E; }
 .fi-firma.fis{ background:#EAF2FB; color:#1F5F9E; }
 .fi-tec{ margin:2px 0 8px; font-size:12.5px; color:var(--muted,#66707C); }
+.fi-reg{ margin:-4px 0 8px; font-size:12px; color:var(--muted,#66707C); }
+.fi-reg.tarde{ color:#B8620A; font-weight:700; }
 .fi-act{ margin:0 0 8px; font-size:13.5px; line-height:1.45; white-space:pre-line; }
 .fi-hall{ margin:0; font-size:13px; padding:7px 10px; border-radius:8px; line-height:1.4; white-space:pre-line; }
 .fi-hall.ok{ background:#EFF9F2; color:#0B7A3E; }
@@ -250,6 +252,7 @@ function pintar(eq, mantenimientos, cambios) {
     const h = (m.hallazgos || "").trim();
     const sinNovedad = !h || /^\s*sin\s+novedad/i.test(h);
     const firmaCls = v.tipo_firma === "Digital" ? "dig" : "fis";
+    const tardio = diasRegistroTardio(m.fecha, m.created_at);
     return `
       <div class="fi-tl-item" style="--dot:${sinNovedad ? COLOR["Vigente"] : COLOR["Próximo"]}">
         <span class="fi-dot"></span>
@@ -259,6 +262,7 @@ function pintar(eq, mantenimientos, cambios) {
             ${v.tipo_firma ? `<span class="fi-firma ${firmaCls}">Firma ${esc(v.tipo_firma.toLowerCase())}</span>` : ""}
           </div>
           <p class="fi-tec">Técnico: ${esc(m.tecnico_nombre)}</p>
+          <p class="fi-reg ${tardio > DIAS_ALERTA_REGISTRO ? "tarde" : ""}">Registrado el ${fmtFechaHoraGT(m.created_at)}${tardio > DIAS_ALERTA_REGISTRO ? ` · ${tardio} días después de la fecha` : ""}</p>
           <p class="fi-act">${esc(m.actividades) || "<i>Sin actividades registradas</i>"}</p>
           <p class="fi-hall ${sinNovedad ? "ok" : "alerta"}"><b>${sinNovedad ? "Sin novedad" : "Hallazgos:"}</b> ${sinNovedad && !h ? "" : (sinNovedad ? esc(h.replace(/^\s*sin\s+novedad[.:,;\s-]*/i, "")) : esc(h))}</p>
           <div class="fi-card-foot">

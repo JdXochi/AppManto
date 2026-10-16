@@ -180,7 +180,7 @@ export async function getEquipoFicha(equipoId) {
 export async function listMantenimientosDeEquipo(equipoId) {
   return fetchAll(() => supabase
     .from("mantenimientos")
-    .select("id, fecha, tecnico_nombre, actividades, hallazgos, vistos_buenos ( nombre, puesto, tipo_firma, firma_path )")
+    .select("id, fecha, created_at, tecnico_nombre, actividades, hallazgos, vistos_buenos ( nombre, puesto, tipo_firma, firma_path )")
     .eq("equipo_id", equipoId)
     .order("fecha", { ascending: false })
     .order("id", { ascending: true }));

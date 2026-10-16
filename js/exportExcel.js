@@ -3,7 +3,7 @@
 // Exportación de reportes a Excel (.xlsx)
 // La librería ExcelJS se carga solo al presionar "Descargar".
 // =========================================================
-import { hoyLocalISO } from "./shared.js";
+import { hoyLocalISO, diasRegistroTardio } from "./shared.js";
 
 const EXCELJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js";
 
@@ -41,6 +41,17 @@ function fechaExcel(iso) {
   return new Date(Date.UTC(y, m - 1, d));
 }
 
+// Instante (timestamptz) -> fecha y hora de Excel, tal como se ve en Guatemala
+function fechaHoraExcelGT(iso) {
+  if (!iso) return null;
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const g = t => Number(partes.find(p => p.type === t).value);
+  return new Date(Date.UTC(g("year"), g("month") - 1, g("day"), g("hour"), g("minute")));
+}
+
 function descargar(buffer, nombreArchivo) {
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
@@ -63,6 +74,7 @@ function crearHojaDatos(wb, nombreHoja, columnas, filas, { filtro = true } = {})
     key: c.key,
     width: c.width || 18,
     style: c.tipo === "fecha" ? { numFmt: "dd/mm/yyyy" }
+         : c.tipo === "fechahora" ? { numFmt: "dd/mm/yyyy hh:mm" }
          : c.tipo === "costo" ? { numFmt: '"Q"#,##0.00' }
          : c.tipo === "porcentaje" ? { numFmt: "0.0%" }
          : {},
@@ -195,6 +207,8 @@ export async function exportarMantenimientos(registros, { usuario, filtrosTexto 
 
   const columnas = [
     { header: "Fecha", key: "fecha", width: 13, tipo: "fecha" },
+    { header: "Registrado el", key: "registrado", width: 18, tipo: "fechahora" },
+    { header: "Días entre fecha y registro", key: "diasReg", width: 14 },
     { header: "Serie / Código", key: "serie", width: 22 },
     { header: "Tipo de equipo", key: "tipo", width: 20 },
     { header: "Garita", key: "garita", width: 18 },
@@ -212,6 +226,8 @@ export async function exportarMantenimientos(registros, { usuario, filtrosTexto 
     const vobo = (r.vistos_buenos && r.vistos_buenos[0]) || {};
     return {
       fecha: fechaExcel(r.fecha),
+      registrado: fechaHoraExcelGT(r.created_at),
+      diasReg: r.created_at ? diasRegistroTardio(r.fecha, r.created_at) : null,
       serie: eq.serie || "",
       tipo: eq.tipo || "",
       garita: eq.garita || "",
