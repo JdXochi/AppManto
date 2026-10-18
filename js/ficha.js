@@ -6,7 +6,9 @@
 // Se abre desde cualquier elemento que tenga data-ficha="<id del equipo>"
 // (o con window.abrirFicha(id) / con la dirección dashboard.html?equipo=<id>).
 // =========================================================
-import { getEquipoFicha, listMantenimientosDeEquipo, listCambiosHardwareDeEquipo } from "./data.js";
+import { getEquipoFicha, listMantenimientosDeEquipo, listCambiosHardwareDeEquipo, retirarEquipo, reactivarEquipo } from "./data.js";
+import { invalidateEquipos } from "./equiposStore.js";
+import { pedirRetiro } from "./retiro.js";
 import { esc, hoyLocalISO, DIAS_ALERTA_REGISTRO, diasRegistroTardio, fmtFechaHoraGT } from "./shared.js";
 import { fmtDate } from "./pdf.js";
 import { verHoja } from "./verHoja.js";
@@ -116,6 +118,10 @@ body.fi-lock{ overflow:hidden; }
 /* ---------- Pie con acciones ---------- */
 .fi-foot{ display:flex; gap:10px; padding:14px 22px; background:var(--card,#fff); border-top:1px solid var(--line,#E4E9EE); flex-wrap:wrap; }
 .fi-foot button{ flex:1 1 180px; }
+.fi-foot button.fi-peligro{ background:#fff; color:#B42318; border:1.5px solid #F2B8B5; border-radius:9px; padding:11px 22px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
+.fi-foot button.fi-peligro:hover{ background:#FCE9E9; }
+.fi-baja{ background:#F2F4F7; border-left:5px solid #667085; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13.5px; line-height:1.45; color:var(--ink,#14202E); }
+.fi-baja b{ color:#344054; }
 
 /* ---------- Cargando ---------- */
 .fi-cargando{ padding:60px 24px; text-align:center; color:var(--muted,#66707C); }
@@ -239,8 +245,12 @@ export async function abrirFicha(equipoId) {
 // ---------------------------------------------------------------
 function pintar(eq, mantenimientos, cambios) {
   const hoy = hoyLocalISO();
-  const est = infoEstado(eq, hoy);
-  const puedeRegistrar = ctx.ROL === "admin" || ctx.ROL === "tecnico";
+  const fuera = !!eq.fuera_servicio;
+  const est = fuera
+    ? { color: "#667085", texto: `Fuera de servicio${eq.baja_fecha ? " desde " + fmtDate(eq.baja_fecha) : ""}`, ratio: 0 }
+    : infoEstado(eq, hoy);
+  const esAdmin = ctx.ROL === "admin";
+  const puedeRegistrar = (esAdmin || ctx.ROL === "tecnico") && !fuera;
   const costoTotal = cambios.reduce((a, c) => a + (c.costo !== null && c.costo !== undefined ? Number(c.costo) : 0), 0);
 
   const ubic = [eq.garita, eq.ubicacion].filter(Boolean).join(" · ");
@@ -313,6 +323,7 @@ function pintar(eq, mantenimientos, cambios) {
       </div>
 
       <div class="fi-body">
+        ${fuera ? `<div class="fi-baja"><b>${esc(eq.baja_tipo || "Fuera de servicio")}</b>${eq.baja_motivo ? " · " + esc(eq.baja_motivo) : ""}<br>Este equipo no cuenta en pendientes ni en el cumplimiento. Su historial se conserva.</div>` : ""}
         <div class="fi-stats">
           <div class="fi-stat" style="--c:#0B8F47"><b>${mantenimientos.length}</b><span>Mantenimientos</span></div>
           <div class="fi-stat" style="--c:#2A80C1"><b>${cambios.length}</b><span>Cambios de hardware</span></div>
@@ -334,10 +345,13 @@ function pintar(eq, mantenimientos, cambios) {
         <div id="fi-pane-hw" hidden>${hwHtml}</div>
       </div>
     </div>
-    ${puedeRegistrar ? `
+    ${(puedeRegistrar || esAdmin) ? `
     <div class="fi-foot">
+      ${puedeRegistrar ? `
       <button class="primary" data-reg="mant">Registrar mantenimiento</button>
-      <button class="secondary" data-reg="hw">Registrar cambio de hardware</button>
+      <button class="secondary" data-reg="hw">Registrar cambio de hardware</button>` : ""}
+      ${esAdmin && !fuera ? `<button class="fi-peligro" data-retirar>Retirar de servicio</button>` : ""}
+      ${esAdmin && fuera ? `<button class="primary" data-reactivar>Reactivar equipo</button>` : ""}
     </div>` : ""}`;
 
   // ----- Acciones -----
@@ -361,6 +375,35 @@ function pintar(eq, mantenimientos, cambios) {
     cerrarFicha();
     if (window.irAVista) window.irAVista(vista, { preseleccionarEquipoId: eq.id });
   }));
+
+  const btnRetirar = panel.querySelector("[data-retirar]");
+  if (btnRetirar) btnRetirar.addEventListener("click", async () => {
+    const datos = await pedirRetiro({ serie: eq.serie, tipo: eq.tipo });
+    if (!datos) return;
+    btnRetirar.disabled = true;
+    try {
+      await retirarEquipo(eq.id, datos);
+      invalidateEquipos();
+      abrirFicha(eq.id);          // se vuelve a cargar la ficha, ya como "fuera de servicio"
+    } catch (err) {
+      alert("No se pudo retirar el equipo: " + err.message);
+      btnRetirar.disabled = false;
+    }
+  });
+
+  const btnReactivar = panel.querySelector("[data-reactivar]");
+  if (btnReactivar) btnReactivar.addEventListener("click", async () => {
+    if (!confirm(`¿Reactivar el equipo ${eq.serie}?\n\nVolverá a contar en los pendientes y en el cumplimiento.`)) return;
+    btnReactivar.disabled = true;
+    try {
+      await reactivarEquipo(eq.id);
+      invalidateEquipos();
+      abrirFicha(eq.id);
+    } catch (err) {
+      alert("No se pudo reactivar el equipo: " + err.message);
+      btnReactivar.disabled = false;
+    }
+  });
 
   const cerrar = panel.querySelector("[data-cerrar]");
   if (cerrar) cerrar.focus({ preventScroll: true });

@@ -166,7 +166,9 @@ export async function listActividadMantenimientos(desde) {
 
 // ---------- Ficha del equipo ----------
 
-// Datos del equipo con su estado (vista reporte_inventario). Devuelve null si no existe.
+// Datos del equipo con su estado (vista reporte_inventario). Si el equipo está
+// fuera de servicio (no aparece en la vista) se arma desde la tabla equipos.
+// Devuelve null si no existe.
 export async function getEquipoFicha(equipoId) {
   const { data, error } = await supabase
     .from("reporte_inventario")
@@ -174,7 +176,58 @@ export async function getEquipoFicha(equipoId) {
     .eq("id", equipoId)
     .limit(1);
   if (error) throw error;
-  return data && data.length ? data[0] : null;
+  if (data && data.length) return data[0];
+
+  const r = await supabase
+    .from("equipos")
+    .select(`id, garita, ubicacion, serie, marca, modelo, ip, encargado_nombre, encargado_puesto,
+             activo, baja_tipo, baja_motivo, baja_fecha, tipos_equipo ( descripcion, frecuencia_meses )`)
+    .eq("id", equipoId)
+    .limit(1);
+  if (r.error) throw r.error;
+  if (!r.data || !r.data.length) return null;
+  const e = r.data[0];
+  return {
+    id: e.id,
+    garita: e.garita,
+    ubicacion: e.ubicacion,
+    tipo: e.tipos_equipo?.descripcion || "",
+    serie: e.serie,
+    marca: e.marca,
+    modelo: e.modelo,
+    ip: e.ip,
+    encargado_nombre: e.encargado_nombre,
+    encargado_puesto: e.encargado_puesto,
+    frecuencia_meses: e.tipos_equipo?.frecuencia_meses ?? null,
+    ultima_fecha: null,
+    proxima_fecha: null,
+    estado: e.baja_tipo || "Fuera de servicio",
+    fuera_servicio: !e.activo,
+    baja_tipo: e.baja_tipo,
+    baja_motivo: e.baja_motivo,
+    baja_fecha: e.baja_fecha,
+  };
+}
+
+// ---------- Baja de equipos (solo admin; lo valida también la base de datos) ----------
+
+// baja_tipo: "En bodega" | "En reparación" | "Dado de baja"
+export async function retirarEquipo(id, { baja_tipo, baja_motivo, baja_fecha }) {
+  return updateEquipo(id, { activo: false, baja_tipo, baja_motivo, baja_fecha });
+}
+
+export async function reactivarEquipo(id) {
+  return updateEquipo(id, { activo: true });
+}
+
+export async function listEquiposRetirados() {
+  const data = await fetchAll(() => supabase
+    .from("equipos")
+    .select("id, garita, ubicacion, serie, baja_tipo, baja_motivo, baja_fecha, tipos_equipo ( descripcion )")
+    .eq("activo", false)
+    .order("baja_fecha", { ascending: false })
+    .order("id", { ascending: true }));
+  return data.map(e => ({ ...e, tipo: e.tipos_equipo?.descripcion || "" }));
 }
 
 export async function listMantenimientosDeEquipo(equipoId) {
