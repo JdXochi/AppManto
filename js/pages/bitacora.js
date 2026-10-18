@@ -29,6 +29,7 @@ const ETIQUETAS = {
   fecha: "Fecha", actividades: "Actividades", hallazgos: "Hallazgos", accion: "Acción",
   descripcion: "Detalle", costo: "Costo", tecnico_nombre: "Técnico", equipo_serie: "Equipo",
   debe_cambiar_password: "Debe cambiar contraseña",
+  baja_tipo: "Tipo de baja", baja_motivo: "Motivo de baja", baja_fecha: "Fecha de baja",
 };
 
 // Campos que no aportan al detalle (identificadores internos y fechas técnicas)

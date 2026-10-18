@@ -5,7 +5,8 @@
 import { getEquipos, invalidateEquipos } from "../equiposStore.js";
 import { getTiposEquipo, invalidateTiposEquipo } from "../tiposEquipoStore.js";
 import { getEncargados, invalidateEncargados } from "../encargadosStore.js";
-import { addEquipo, addTipoEquipo, updateEquipo, addEncargado } from "../data.js";
+import { addEquipo, addTipoEquipo, updateEquipo, addEncargado, listEquiposRetirados } from "../data.js";
+import { fmtDate } from "../pdf.js";
 import { GARITAS, fillSelect, fillSelectPairs, tiposDisponibles, normalizarTexto, esc, formatearNombre, buscarEncargadosParecidos } from "../shared.js";
 
 const NUEVO_TIPO = "__nuevo__";
@@ -113,6 +114,17 @@ export async function render(container, { ROL }) {
         </table>
       </div>
       <p class="empty" id="inv-empty" style="display:none">Aún no hay equipos en el inventario.</p>
+    </div>
+
+    <div class="card" id="card-retirados" style="display:none">
+      <h2>Equipos fuera de servicio <span class="hint" id="ret-count"></span></h2>
+      <p class="sub">No cuentan en los pendientes ni en el cumplimiento, pero conservan su historial. Haz clic en la serie para ver su ficha${ROL === "admin" ? " o reactivarlo" : ""}.</p>
+      <div style="overflow-x:auto">
+        <table id="tabla-retirados" class="responsive-cards">
+          <thead><tr><th>Serie / Código</th><th>Tipo</th><th>Garita / Ubicación</th><th>Estado</th><th>Desde</th><th>Motivo</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
   `;
 
@@ -443,4 +455,28 @@ export async function render(container, { ROL }) {
   }
 
   await renderTabla();
+
+  // ---- Equipos fuera de servicio (solo lectura; se reactivan desde su ficha) ----
+  const COLOR_BAJA = { "En bodega": "#2A80C1", "En reparación": "#F0A500", "Dado de baja": "#667085" };
+  async function renderRetirados() {
+    const lista = await listEquiposRetirados();
+    const card = container.querySelector("#card-retirados");
+    card.style.display = lista.length ? "block" : "none";
+    container.querySelector("#ret-count").textContent = lista.length ? `(${lista.length})` : "";
+    const tbody = container.querySelector("#tabla-retirados tbody");
+    tbody.innerHTML = "";
+    lista.forEach(r => {
+      const color = COLOR_BAJA[r.baja_tipo] || "#667085";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td data-label="Serie"><b data-ficha="${esc(r.id)}" title="Ver ficha del equipo">${esc(r.serie)}</b></td>
+        <td data-label="Tipo">${esc(r.tipo)}</td>
+        <td data-label="Garita / Ubicación">${esc(r.garita)}${r.ubicacion ? " · " + esc(r.ubicacion) : ""}</td>
+        <td data-label="Estado"><span style="display:inline-block; padding:3px 11px; border-radius:20px; font-size:12px; font-weight:700; background:${color}1F; color:${color}">${esc(r.baja_tipo || "Fuera de servicio")}</span></td>
+        <td data-label="Desde">${r.baja_fecha ? fmtDate(r.baja_fecha) : ""}</td>
+        <td data-label="Motivo" style="min-width:200px; white-space:pre-line">${esc(r.baja_motivo)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  await renderRetirados();
 }
