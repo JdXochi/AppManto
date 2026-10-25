@@ -149,7 +149,7 @@ export async function listActividadMantenimientos(desde) {
   const data = await fetchAll(() => {
     let q = supabase
       .from("mantenimientos")
-      .select("id, equipo_id, fecha, tecnico_nombre, equipos ( garita, serie, tipos_equipo ( descripcion ) )");
+      .select("id, equipo_id, fecha, created_at, tecnico_nombre, equipos ( garita, serie, tipos_equipo ( descripcion ) )");
     if (desde) q = q.gte("fecha", desde);
     return q.order("fecha", { ascending: false }).order("id", { ascending: true });
   });
@@ -157,11 +157,48 @@ export async function listActividadMantenimientos(desde) {
     id: r.id,
     equipo_id: r.equipo_id,
     fecha: r.fecha,
+    created_at: r.created_at,
     tecnico_nombre: r.tecnico_nombre,
     garita: r.equipos?.garita || "",
     serie: r.equipos?.serie || "",
     tipo: r.equipos?.tipos_equipo?.descripcion || "",
   }));
+}
+
+// Cambios de hardware desde una fecha (para el Inicio). Versión liviana.
+export async function listCambiosHardwareReciente(desde) {
+  const data = await fetchAll(() => {
+    let q = supabase
+      .from("cambios_hardware")
+      .select(`id, equipo_id, fecha, created_at, accion, costo, tecnico_nombre,
+               categorias_hardware ( descripcion ),
+               equipos ( garita, serie, tipos_equipo ( descripcion ) )`);
+    if (desde) q = q.gte("fecha", desde);
+    return q.order("fecha", { ascending: false }).order("id", { ascending: true });
+  });
+  return data.map(r => ({
+    id: r.id,
+    equipo_id: r.equipo_id,
+    fecha: r.fecha,
+    created_at: r.created_at,
+    accion: r.accion,
+    costo: r.costo === null || r.costo === undefined ? null : Number(r.costo),
+    tecnico_nombre: r.tecnico_nombre,
+    categoria: r.categorias_hardware?.descripcion || "",
+    garita: r.equipos?.garita || "",
+    serie: r.equipos?.serie || "",
+    tipo: r.equipos?.tipos_equipo?.descripcion || "",
+  }));
+}
+
+// Cuántos equipos están fuera de servicio (bodega, reparación o baja)
+export async function contarEquiposRetirados() {
+  const { count, error } = await supabase
+    .from("equipos")
+    .select("id", { count: "exact", head: true })
+    .eq("activo", false);
+  if (error) throw error;
+  return count || 0;
 }
 
 // ---------- Ficha del equipo ----------
