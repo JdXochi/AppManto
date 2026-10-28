@@ -24,7 +24,7 @@ export async function getPerfilActual() {
   if (!session) return null;
   const { data, error } = await supabase
     .from("perfiles")
-    .select("nombre, username, rol, activo, debe_cambiar_password")
+    .select("nombre, username, rol, activo, debe_cambiar_password, empresa")
     .eq("id", session.user.id)
     .single();
   if (error) { console.error(error); return null; }

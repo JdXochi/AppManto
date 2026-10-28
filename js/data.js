@@ -23,7 +23,7 @@ async function fetchAll(buildQuery, pageSize = 1000) {
 
 // ---------- Tipos de equipo (catálogo) ----------
 
-export async function listTiposEquipo() {
+async function listTiposEquipoBruto() {
   const { data, error } = await supabase
     .from("tipos_equipo")
     .select("id, descripcion, frecuencia_meses")
@@ -55,7 +55,7 @@ export async function updateTipoEquipo(id, cambios) {
 
 // ---------- Equipos (inventario) ----------
 
-export async function listEquipos() {
+async function listEquiposBruto() {
   const data = await fetchAll(() => supabase
     .from("equipos")
     .select(`
@@ -96,7 +96,7 @@ export async function updateEquipo(id, cambios) {
 
 // ---------- Seguimiento (estado por equipo, vista calculada) ----------
 
-export async function listSeguimiento() {
+async function listSeguimientoBruto() {
   return fetchAll(() => supabase
     .from("seguimiento_equipos")
     .select("*")
@@ -106,7 +106,7 @@ export async function listSeguimiento() {
 
 // Reporte de inventario (vista reporte_inventario): equipos activos con
 // ubicación, datos del equipo, encargado y estado de mantenimiento.
-export async function listReporteInventario() {
+async function listReporteInventarioBruto() {
   return fetchAll(() => supabase
     .from("reporte_inventario")
     .select("*")
@@ -118,7 +118,7 @@ export async function listReporteInventario() {
 // ---------- Mantenimientos ----------
 
 // opciones (todas opcionales): { desde: "YYYY-MM-DD", hasta: "YYYY-MM-DD" }
-export async function listMantenimientos({ desde, hasta } = {}) {
+async function listMantenimientosBruto({ desde, hasta } = {}) {
   const data = await fetchAll(() => {
     let q = supabase
       .from("mantenimientos")
@@ -145,7 +145,7 @@ export async function listMantenimientos({ desde, hasta } = {}) {
 
 // Versión liviana para la pantalla de Inicio: solo lo necesario para contar
 // mantenimientos por mes y mostrar la actividad reciente.
-export async function listActividadMantenimientos(desde) {
+async function listActividadMantenimientosBruto(desde) {
   const data = await fetchAll(() => {
     let q = supabase
       .from("mantenimientos")
@@ -166,7 +166,7 @@ export async function listActividadMantenimientos(desde) {
 }
 
 // Cambios de hardware desde una fecha (para el Inicio). Versión liviana.
-export async function listCambiosHardwareReciente(desde) {
+async function listCambiosHardwareRecienteBruto(desde) {
   const data = await fetchAll(() => {
     let q = supabase
       .from("cambios_hardware")
@@ -192,7 +192,7 @@ export async function listCambiosHardwareReciente(desde) {
 }
 
 // Cuántos equipos están fuera de servicio (bodega, reparación o baja)
-export async function contarEquiposRetirados() {
+async function contarEquiposRetiradosBruto() {
   const { count, error } = await supabase
     .from("equipos")
     .select("id", { count: "exact", head: true })
@@ -206,7 +206,7 @@ export async function contarEquiposRetirados() {
 // Datos del equipo con su estado (vista reporte_inventario). Si el equipo está
 // fuera de servicio (no aparece en la vista) se arma desde la tabla equipos.
 // Devuelve null si no existe.
-export async function getEquipoFicha(equipoId) {
+async function getEquipoFichaBruto(equipoId) {
   const { data, error } = await supabase
     .from("reporte_inventario")
     .select("*")
@@ -257,7 +257,7 @@ export async function reactivarEquipo(id) {
   return updateEquipo(id, { activo: true });
 }
 
-export async function listEquiposRetirados() {
+async function listEquiposRetiradosBruto() {
   const data = await fetchAll(() => supabase
     .from("equipos")
     .select("id, garita, ubicacion, serie, baja_tipo, baja_motivo, baja_fecha, tipos_equipo ( descripcion )")
@@ -376,7 +376,7 @@ export async function urlFirma(path) {
 export async function listPerfiles() {
   const { data, error } = await supabase
     .from("perfiles")
-    .select("id, username, nombre, rol, activo, debe_cambiar_password")
+    .select("id, username, nombre, rol, activo, debe_cambiar_password, empresa")
     .order("username", { ascending: true });
   if (error) throw error;
   return data;
@@ -398,7 +398,7 @@ export async function updatePerfil(id, cambios) {
 // la Edge Function "crear-usuario" -- es la única operación que de verdad
 // necesita privilegios de administrador de Supabase, por eso no se hace
 // directo desde aquí.
-export async function crearUsuario({ username, nombre, rol, password }) {
+export async function crearUsuario({ username, nombre, rol, password, empresa = "Xochi" }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Sesión no encontrada.");
 
@@ -414,6 +414,12 @@ export async function crearUsuario({ username, nombre, rol, password }) {
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Error (${res.status})`);
+
+  // La empresa no la maneja la función interna: se asigna justo después.
+  if (empresa && empresa !== "Xochi") {
+    const { error } = await supabase.from("perfiles").update({ empresa }).eq("username", username);
+    if (error) throw new Error("El usuario se creó, pero no se pudo asignar la empresa: " + error.message);
+  }
   return body;
 }
 
@@ -477,7 +483,7 @@ export async function addCategoriaHardware(descripcion) {
   return data;
 }
 
-export async function listCambiosHardware() {
+async function listCambiosHardwareBruto() {
   const data = await fetchAll(() => supabase
     .from("cambios_hardware")
     .select(`
@@ -512,4 +518,76 @@ export async function addCambioHardware(registro) {
 export async function deleteCambioHardware(id) {
   const { error } = await supabase.from("cambios_hardware").delete().eq("id", id);
   if (error) throw error;
+}
+
+
+// =========================================================
+// Alcance por empresa
+// Los técnicos de Kapsch trabajan solo con los equipos cuyo tipo empieza
+// con "Kph". Se aplica aquí, en un solo lugar, a todo lo que se consulta.
+// El resto de las personas (empresa "Xochi") ve todo, sin cambios.
+// =========================================================
+const PREFIJO_KAPSCH = "kph";
+export const esTipoKapsch = tipo => String(tipo || "").trim().toLowerCase().startsWith(PREFIJO_KAPSCH);
+
+let _empresa = null;
+
+// "Xochi" o "Kapsch" (empresa de la persona que inició sesión)
+export async function getEmpresa() {
+  if (_empresa) return _empresa;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return "Xochi";
+    const { data, error } = await supabase
+      .from("perfiles").select("empresa").eq("id", session.user.id).limit(1);
+    if (error) throw error;
+    _empresa = (data && data[0] && data[0].empresa) || "Xochi";
+  } catch (e) {
+    // Si la columna aún no existe, se trabaja como siempre (sin restricción)
+    console.warn("No se pudo leer la empresa del usuario:", e.message);
+    return "Xochi";
+  }
+  return _empresa;
+}
+
+async function alcance(lista, tipoDe) {
+  if ((await getEmpresa()) !== "Kapsch") return lista;
+  return lista.filter(x => esTipoKapsch(tipoDe(x)));
+}
+
+export async function listTiposEquipo() {
+  return alcance(await listTiposEquipoBruto(), t => t.descripcion);
+}
+export async function listEquipos() {
+  return alcance(await listEquiposBruto(), e => e.tipo);
+}
+export async function listSeguimiento() {
+  return alcance(await listSeguimientoBruto(), f => f.tipo);
+}
+export async function listReporteInventario() {
+  return alcance(await listReporteInventarioBruto(), f => f.tipo);
+}
+export async function listMantenimientos(opciones) {
+  return alcance(await listMantenimientosBruto(opciones), r => r.equipos && r.equipos.tipo);
+}
+export async function listActividadMantenimientos(desde) {
+  return alcance(await listActividadMantenimientosBruto(desde), r => r.tipo);
+}
+export async function listCambiosHardwareReciente(desde) {
+  return alcance(await listCambiosHardwareRecienteBruto(desde), h => h.tipo);
+}
+export async function listCambiosHardware() {
+  return alcance(await listCambiosHardwareBruto(), r => r.equipo && r.equipo.tipo);
+}
+export async function listEquiposRetirados() {
+  return alcance(await listEquiposRetiradosBruto(), e => e.tipo);
+}
+export async function contarEquiposRetirados() {
+  if ((await getEmpresa()) === "Kapsch") return (await listEquiposRetirados()).length;
+  return contarEquiposRetiradosBruto();
+}
+export async function getEquipoFicha(equipoId) {
+  const eq = await getEquipoFichaBruto(equipoId);
+  if (eq && (await getEmpresa()) === "Kapsch" && !esTipoKapsch(eq.tipo)) return null;
+  return eq;
 }

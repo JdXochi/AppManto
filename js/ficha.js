@@ -6,7 +6,7 @@
 // Se abre desde cualquier elemento que tenga data-ficha="<id del equipo>"
 // (o con window.abrirFicha(id) / con la dirección dashboard.html?equipo=<id>).
 // =========================================================
-import { getEquipoFicha, listMantenimientosDeEquipo, listCambiosHardwareDeEquipo, retirarEquipo, reactivarEquipo } from "./data.js";
+import { getEquipoFicha, listMantenimientosDeEquipo, listCambiosHardwareDeEquipo, retirarEquipo, reactivarEquipo, getEmpresa } from "./data.js";
 import { invalidateEquipos } from "./equiposStore.js";
 import { pedirRetiro } from "./retiro.js";
 import { esc, hoyLocalISO, DIAS_ALERTA_REGISTRO, diasRegistroTardio, fmtFechaHoraGT } from "./shared.js";
@@ -175,6 +175,7 @@ function infoEstado(eq, hoy) {
 // Estructura del panel (se crea una sola vez)
 // ---------------------------------------------------------------
 let ctx = { ROL: "usuario" };
+let empresa = "Xochi";      // "Xochi" o "Kapsch"
 let overlay = null, panel = null, peticion = 0;
 
 function asegurarEstructura() {
@@ -217,6 +218,7 @@ export async function abrirFicha(equipoId) {
 
   const mio = ++peticion;
   try {
+    empresa = await getEmpresa();
     const [equipo, mantenimientos, cambios] = await Promise.all([
       getEquipoFicha(equipoId),
       listMantenimientosDeEquipo(equipoId),
@@ -251,6 +253,8 @@ function pintar(eq, mantenimientos, cambios) {
     : infoEstado(eq, hoy);
   const esAdmin = ctx.ROL === "admin";
   const puedeRegistrar = (esAdmin || ctx.ROL === "tecnico") && !fuera;
+  // Retirar o reactivar: el administrador y los técnicos de Kapsch (atienden las fallas de sus equipos)
+  const puedeRetirar = esAdmin || (ctx.ROL === "tecnico" && empresa === "Kapsch");
   const costoTotal = cambios.reduce((a, c) => a + (c.costo !== null && c.costo !== undefined ? Number(c.costo) : 0), 0);
 
   const ubic = [eq.garita, eq.ubicacion].filter(Boolean).join(" · ");
@@ -345,13 +349,13 @@ function pintar(eq, mantenimientos, cambios) {
         <div id="fi-pane-hw" hidden>${hwHtml}</div>
       </div>
     </div>
-    ${(puedeRegistrar || esAdmin) ? `
+    ${(puedeRegistrar || puedeRetirar) ? `
     <div class="fi-foot">
       ${puedeRegistrar ? `
       <button class="primary" data-reg="mant">Registrar mantenimiento</button>
       <button class="secondary" data-reg="hw">Registrar cambio de hardware</button>` : ""}
-      ${esAdmin && !fuera ? `<button class="fi-peligro" data-retirar>Retirar de servicio</button>` : ""}
-      ${esAdmin && fuera ? `<button class="primary" data-reactivar>Reactivar equipo</button>` : ""}
+      ${puedeRetirar && !fuera ? `<button class="fi-peligro" data-retirar>Retirar de servicio</button>` : ""}
+      ${puedeRetirar && fuera ? `<button class="primary" data-reactivar>Reactivar equipo</button>` : ""}
     </div>` : ""}`;
 
   // ----- Acciones -----
@@ -415,6 +419,7 @@ function pintar(eq, mantenimientos, cambios) {
 export function iniciarFicha(authCtx) {
   ctx = authCtx || ctx;
   window.abrirFicha = abrirFicha;
+  mostrarEtiquetaEmpresa();
 
   // Cualquier elemento con data-ficha="<id>" abre la ficha
   document.addEventListener("click", e => {
@@ -431,4 +436,17 @@ export function iniciarFicha(authCtx) {
   // Dirección directa: dashboard.html?equipo=<id>  (útil para códigos QR)
   const id = new URLSearchParams(location.search).get("equipo");
   if (id) abrirFicha(id);
+}
+
+
+// Aviso discreto para las personas de Kapsch: les recuerda por qué ven solo una parte
+async function mostrarEtiquetaEmpresa() {
+  if ((await getEmpresa()) !== "Kapsch" || document.getElementById("etiqueta-empresa")) return;
+  const el = document.createElement("div");
+  el.id = "etiqueta-empresa";
+  el.textContent = "Kapsch · solo equipos Kph";
+  el.style.cssText =
+    "position:fixed; left:14px; bottom:14px; z-index:900; background:#FFF2DD; color:#9A5207; border:1px solid #F5D9A8;" +
+    "font:700 12px/1 system-ui,sans-serif; padding:8px 12px; border-radius:20px; pointer-events:none; box-shadow:0 2px 8px rgba(20,32,46,.12);";
+  document.body.appendChild(el);
 }
