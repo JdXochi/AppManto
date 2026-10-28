@@ -3,8 +3,10 @@
 // Página: Usuarios (solo Admin) — editar y activar/desactivar
 // =========================================================
 import { listPerfiles, updatePerfil, crearUsuario } from "../data.js";
+import { esc } from "../shared.js";
 
 const ROLES = ["admin", "tecnico", "usuario"];
+const EMPRESAS = ["Xochi", "Kapsch"];
 
 function generarPasswordSegura() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -38,6 +40,13 @@ export async function render(container, { perfil: perfilPropio }) {
         </div>
       </div>
       <div class="field">
+        <label for="u-empresa">Empresa</label>
+        <select id="u-empresa">
+          <option value="Xochi">Xochi</option>
+          <option value="Kapsch">Kapsch (solo ve y trabaja con los equipos Kph)</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="u-password">Contraseña inicial</label>
         <div style="display:flex; gap:10px;">
           <input type="text" id="u-password" placeholder="Al menos 8 caracteres" style="flex:1">
@@ -57,10 +66,10 @@ export async function render(container, { perfil: perfilPropio }) {
 
     <div class="card">
       <h2>Usuarios del sistema</h2>
-      <p class="sub">Editar nombre y rol, o desactivar el acceso de alguien sin borrar su historial.</p>
+      <p class="sub">Editar nombre, rol y empresa, o desactivar el acceso de alguien sin borrar su historial. Las personas de Kapsch solo ven y trabajan con los equipos Kph.</p>
       <div style="overflow-x:auto">
         <table id="tabla-usuarios" class="responsive-cards">
-          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+          <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Empresa</th><th>Estado</th><th></th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -76,6 +85,7 @@ export async function render(container, { perfil: perfilPropio }) {
     const username = container.querySelector("#u-username").value.trim().toLowerCase();
     const nombre = container.querySelector("#u-nombre").value.trim();
     const rol = container.querySelector("#u-rol").value;
+    const empresa = container.querySelector("#u-empresa").value;
     const password = container.querySelector("#u-password").value;
 
     if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
@@ -89,11 +99,12 @@ export async function render(container, { perfil: perfilPropio }) {
     btn.disabled = true; btn.textContent = "Creando...";
 
     try {
-      await crearUsuario({ username, nombre, rol, password });
+      await crearUsuario({ username, nombre, rol, password, empresa });
 
       container.querySelector("#u-username").value = "";
       container.querySelector("#u-nombre").value = "";
       container.querySelector("#u-rol").value = "tecnico";
+      container.querySelector("#u-empresa").value = "Xochi";
       container.querySelector("#u-password").value = "";
       msg.textContent = "";
 
@@ -118,15 +129,21 @@ export async function render(container, { perfil: perfilPropio }) {
       const esUnoMismo = p.id === perfilPropio.id;
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td data-label="Usuario"><b>@${p.username || "—"}</b></td>
+        <td data-label="Usuario"><b>@${esc(p.username) || "—"}</b></td>
         <td data-label="Nombre">
-          <span class="valor-nombre">${p.nombre}</span>
-          <input type="text" class="edit-nombre" value="${p.nombre}" style="display:none">
+          <span class="valor-nombre">${esc(p.nombre)}</span>
+          <input type="text" class="edit-nombre" value="${esc(p.nombre)}" style="display:none">
         </td>
         <td data-label="Rol">
           <span class="valor-rol" style="text-transform:capitalize">${p.rol}</span>
           <select class="edit-rol" style="display:none">
             ${ROLES.map(r => `<option value="${r}" ${r === p.rol ? "selected" : ""}>${r}</option>`).join("")}
+          </select>
+        </td>
+        <td data-label="Empresa">
+          <span class="valor-empresa"><span class="badge" style="${p.empresa === "Kapsch" ? "background:#FFF2DD; color:#9A5207" : "background:#E6F1FB; color:#0C447C"}">${esc(p.empresa || "Xochi")}</span></span>
+          <select class="edit-empresa" style="display:none">
+            ${EMPRESAS.map(e => `<option value="${e}" ${e === (p.empresa || "Xochi") ? "selected" : ""}>${e}</option>`).join("")}
           </select>
         </td>
         <td data-label="Estado"><span class="badge ${p.activo ? "Vigente" : "Atrasado"}">${p.activo ? "Activo" : "Inactivo"}</span></td>
@@ -143,6 +160,8 @@ export async function render(container, { perfil: perfilPropio }) {
       const valorRol = tr.querySelector(".valor-rol");
       const editNombre = tr.querySelector(".edit-nombre");
       const editRol = tr.querySelector(".edit-rol");
+      const valorEmpresa = tr.querySelector(".valor-empresa");
+      const editEmpresa = tr.querySelector(".edit-empresa");
       const btnEditar = tr.querySelector(".btn-editar");
       const btnGuardar = tr.querySelector(".btn-guardar");
       const btnCancelar = tr.querySelector(".btn-cancelar");
@@ -150,6 +169,8 @@ export async function render(container, { perfil: perfilPropio }) {
       function modoEdicion(activo) {
         valorNombre.style.display = activo ? "none" : "";
         valorRol.style.display = activo ? "none" : "";
+        valorEmpresa.style.display = activo ? "none" : "";
+        editEmpresa.style.display = activo ? "" : "none";
         editNombre.style.display = activo ? "" : "none";
         editRol.style.display = activo ? "" : "none";
         btnEditar.style.display = activo ? "none" : "";
@@ -161,6 +182,7 @@ export async function render(container, { perfil: perfilPropio }) {
       btnCancelar.addEventListener("click", () => {
         editNombre.value = p.nombre;
         editRol.value = p.rol;
+        editEmpresa.value = p.empresa || "Xochi";
         modoEdicion(false);
       });
       btnGuardar.addEventListener("click", async () => {
@@ -172,7 +194,7 @@ export async function render(container, { perfil: perfilPropio }) {
           return;
         }
         try {
-          await updatePerfil(p.id, { nombre: nuevoNombre, rol: nuevoRol });
+          await updatePerfil(p.id, { nombre: nuevoNombre, rol: nuevoRol, empresa: editEmpresa.value });
           await renderTabla();
         } catch (err) {
           alert("No se pudo guardar: " + err.message);

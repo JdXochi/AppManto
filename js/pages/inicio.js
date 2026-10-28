@@ -4,7 +4,7 @@
 // =========================================================
 import {
   listReporteInventario, listActividadMantenimientos,
-  listCambiosHardwareReciente, contarEquiposRetirados,
+  listCambiosHardwareReciente, contarEquiposRetirados, getEmpresa,
 } from "../data.js";
 import { esc, hoyLocalISO, DIAS_ALERTA_REGISTRO, diasRegistroTardio } from "../shared.js";
 import { fmtDate } from "../pdf.js";
@@ -241,6 +241,7 @@ export async function render(container, { ROL, perfil } = {}) {
     contarEquiposRetirados().catch(() => 0),
   ]);
 
+  const esKapsch = (await getEmpresa()) === "Kapsch";
   const esAdmin = ROL === "admin", esTecnico = ROL === "tecnico", esUsuario = ROL === "usuario";
   const puedeRegistrar = esAdmin || esTecnico;
 
@@ -590,6 +591,7 @@ export async function render(container, { ROL, perfil } = {}) {
   container.innerHTML = `${CSS}
   <div class="inicio">
     ${hero}
+    ${esKapsch ? `<div class="ini-card" style="margin-bottom:16px; background:#FFF8EC; border-color:#F5D9A8; color:#9A5207; font-size:13.5px; font-weight:600">Estás viendo solo los equipos de Kapsch (tipos Kph). Todo lo que ves en este panel corresponde únicamente a ellos.</div>` : ""}
     ${accionesHtml}
     ${tilesHtml}
     <div class="ini-grid g2">${medidor}${grafMes}</div>
